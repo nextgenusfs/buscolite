@@ -161,7 +161,7 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
                     seen.add(z)
                     outfile.write('>{}\n{}\n'.format(title, softwrap(seq)))
         logger.info('Trying to use ancestral variants to recover {} BUSCOs'.format(len(seen)))
-        coords2, njobs2 = blast_prefilter(input, filt_variants, logger, evalue=1e-3)
+        coords2, njobs2 = blast_prefilter(input, filt_variants, logger, evalue=1e-5)
         if not silent:
             logger.info('Now launching {} augustus jobs for {} BUSCO models'.format(njobs2, len(coords2)))
 
