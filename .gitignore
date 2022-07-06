@@ -1,0 +1,6 @@
+buscolite.egg-info/*
+build/*
+tests/*
+docs/*
+buscolite/__pycache*
+.DS_Store
