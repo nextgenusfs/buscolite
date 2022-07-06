@@ -30,36 +30,36 @@ def main():
 
 
 def parse_args(args):
-    description = 'BUSCOlite: simplified BUSCO analysis with python API'
+    description = 'BUSCOlite: simplified BUSCO analysis for genome annotation'
     parser = MyParser(description=description, formatter_class=MyHelpFormatter, add_help=False)
-    required = parser.add_argument_group('required arguments')
-    optional = parser.add_argument_group('optional arguments')
+    required = parser.add_argument_group('Required arguments')
+    optional = parser.add_argument_group('Optional arguments')
 
     required.add_argument(
-        '-i', '--input', required=True,
+        '-i', '--input', required=True, metavar = '',
         help='Input sequence file in FASTA format (genome or proteome)')
     required.add_argument(
-        '-o', '--out', required=True,
+        '-o', '--out', required=True, metavar = '',
         help='Give your analysis run a recognisable short name')
     required.add_argument(
-        '-m', '--mode', dest='mode', required=True,
+        '-m', '--mode', dest='mode', required=True, metavar = '',
         choices=['genome', 'proteins'],
-        help='Specify which BUSCO analysis mode to run.')
+        help='Specify which BUSCO analysis mode to run. [genome, proteins')
     required.add_argument(
-        '-l', '--lineage', required=True,
+        '-l', '--lineage', required=True, metavar = '',
         help='Specify location of the BUSCO lineage data to be used (full path).')
 
     optional.add_argument(
-        '-c', '--cpus', required=False, type=int, default=1,
+        '-c', '--cpus', required=False, type=int, default=1, metavar = '',
         help='Specify the number (N=integer) of threads/cores to use.')
     optional.add_argument(
-        '-e', '--evalue', required=False, type=float, default=1e-50,
+        '-e', '--evalue', required=False, type=float, default=1e-50, metavar = '',
         help='E-value cutoff for BLAST searches.')
     optional.add_argument(
-        '-sp', '--species', required=False, default='anidulans',
+        '-sp', '--species', required=False, default='anidulans', metavar = '',
         help='Name of existing Augustus species gene finding parameters.')
     optional.add_argument(
-        '-f', '--flanks', required=False, type=int, default=2000,
+        '-f', '--flanks', required=False, type=int, default=2000, metavar = '',
         help='Length of flanking region to use for augustus prediction from tblastn hits.')
     help_args = parser.add_argument_group('Help')
     help_args.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
