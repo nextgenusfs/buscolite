@@ -63,12 +63,7 @@ def proteinprofile(fasta, prfl, species='anidulans',
            '--stopCodonExcludedFromCDS=False']
     if configpath:
         cmd.append('--AUGUSTUS_CONFIG_PATH={}'.format(configpath))
-    if start:
-        cmd.append('--predictionStart={}'.format(start))
-    if end:
-        cmd.append('--predictionEnd={}'.format(end))
     cmd.append(fasta)
-    #sys.stderr.write('{}\n'.format(' '.join(cmd)))
     preds = {}
     ID = None
     for line in execute(cmd):
@@ -76,11 +71,11 @@ def proteinprofile(fasta, prfl, species='anidulans',
             cols = line.rstrip().split('\t')
             ID = cols[8].replace('ID=', '')
             preds[ID] = {'contig': cols[0], 'strand': cols[6],
-                         'location': (int(cols[3]), int(cols[4])),
+                         'location': (int(cols[3])+start, int(cols[4])+start),
                          'coords': [], 'phase': []}
         elif '\tAUGUSTUS\tCDS\t' in line:
             cols = line.rstrip().split('\t')
             ID = cols[8].split('Parent=')[-1].split('.')[0]
-            preds[ID]['coords'].append((int(cols[3]), int(cols[4])))
+            preds[ID]['coords'].append((int(cols[3])+start, int(cols[4])+start))
             preds[ID]['phase'].append(int(cols[7]))
     return preds

@@ -3,30 +3,40 @@
 import sys
 import os
 import argparse
+import json
 from .__version__ import __version__
 from .help_formatter import MyParser, MyHelpFormatter
 from .busco import runbusco
 from .utilities import gffwriter, summary_writer
+from .log import startLogging
 
 
 def main():
     args = parse_args(sys.argv[1:])
+    logger = startLogging()
     d, m, stats, cfg = runbusco(args.input, args.lineage, species=args.species,
                         mode=args.mode, evalue=args.evalue, cpus=args.cpus,
-                        tmpdir='test-buscolite', offset=args.flanks)
+                        offset=args.flanks, logger=logger)
+    logger.info('Analysis complete:\n single-copy={}\n fragmented={}\n duplicated={}\n total={}'.format(
+        stats['single-copy'], stats['fragmented'], stats['duplicated'], stats['total']
+    ))
     # write gff if genome mode
     if args.mode == 'genome':
-        gff = '{}.gff3'.format(args.out)
+        gff = '{}.buscolite.gff3'.format(args.out)
         with open(gff, 'w') as outfile:
             gffwriter(d, outfile)
     # write summary output
-    summary = '{}.buscolite.full_table.tsv'.format(args.out)
+    summary = '{}.buscolite.tsv'.format(args.out)
     with open(summary, 'w') as outfile:
         summary_writer(d, m, sys.argv, cfg, outfile, mode=args.mode)
-
-    sys.stderr.write('{}\n'.format(stats))
-
-
+    # write output file to json, might useful
+    raw = '{}.buscolite.json'.format(args.out)
+    with open(raw, 'w') as outfile:
+        outfile.write(json.dumps(d, indent=2))
+    if args.mode == 'genome':
+        logger.info('Ouput files written:\n GFF3={}\n Summary={}\n Raw={}'.format(gff, summary, raw))
+    else:
+        logger.info('Ouput files written:\n Summary={}\n Raw={}'.format(summary, raw))
 
 
 def parse_args(args):

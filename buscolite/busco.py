@@ -1,7 +1,6 @@
 import sys
 import os
-import shutil
-import uuid
+import tempfile
 import concurrent.futures
 from natsort import natsorted
 import pyhmmer
@@ -9,7 +8,7 @@ from .__version__ import __version__
 from .log import startLogging
 from .search import blast_prefilter, hmmer_search_single, hmmer_search, tblastn_version
 from .augustus import proteinprofile, augustus_version, augustus_functional
-from .fasta import explode_fasta, softwrap, getSeqRegions, translate, fasta2dict, fasta2lengths
+from .fasta import softwrap, getSeqRegions, translate, fasta2dict, fasta2lengths
 
 
 def load_config(lineage):
@@ -43,20 +42,24 @@ def load_cutoffs(lineage):
     return cutoffs
 
 
-def predict_and_validate(fasta, prfl, cutoffs,
+def predict_and_validate(fadict, contig, prfl, cutoffs,
                          species, start,
                          end, configpath,
                          blast_evalue, blast_score):
+    # augustus no longer accepts fasta from stdin, so write tempfile
+    t_fasta = tempfile.NamedTemporaryFile(suffix=".fasta")
+    with open(t_fasta.name, 'w') as f:
+        f.write('>{}\n{}\n'.format(contig, fadict[contig][start:end]))
     # run augustus on the regions
-    aug_preds = proteinprofile(fasta, prfl,
+    aug_preds = proteinprofile(t_fasta.name, prfl,
                                species=species, start=start,
                                end=end, configpath=configpath)
+    t_fasta.close()
     busco_name = os.path.basename(prfl).split('.')[0]
     if len(aug_preds) > 0:
         hmmfile = os.path.join(os.path.dirname(os.path.dirname(prfl)), 'hmms', '{}.hmm'.format(busco_name))
-        faDict = fasta2dict(fasta)
         for k, v in aug_preds.items():
-            transcript = getSeqRegions(faDict, v['contig'], v['coords'])
+            transcript = getSeqRegions(fadict, v['contig'], v['coords'])
             if v['strand'] == '+':
                 protein = translate(transcript, v['strand'], v['phase'][0])
             else:
@@ -79,12 +82,10 @@ def predict_and_validate(fasta, prfl, cutoffs,
     return False
 
 
-
 def runbusco(input, lineage, mode='genome', species='anidulans',
-             cpus=1, tmpdir=False, evalue=1e-50, offset=2000, silent=False):
-    logger = startLogging()
-    if not tmpdir:
-        tmpdir = os.path.join('/tmp', str(uuid.uuid4()))
+             cpus=1, evalue=1e-50, offset=2000, silent=False, logger=False):
+    if not logger:
+        logger = startLogging()
     Config = load_config(lineage)
     CutOffs = load_cutoffs(lineage)
 
@@ -98,31 +99,33 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
             sys.exit(1)
         if not silent:
             logger.info('{} lineage contains {} BUSCO models'.format(Config['name'], len(CutOffs)))
+        # load genome into dictionary
+        seq_records = fasta2dict(input)
         # run blast filter from ancesteral proteins
         query = os.path.join(lineage, 'ancestral')
         if not silent:
             logger.info('Prefiltering predictions using tblastn of ancestral sequences')
-        coords, njobs = blast_prefilter(input, query, logger, evalue=evalue)
+        coords, njobs = blast_prefilter(input, query, logger, evalue=evalue, cpus=cpus)
         if not silent:
             logger.info('Now launching {} augustus/phymmer jobs for {} BUSCO models'.format(njobs, len(coords)))
-        seq_records = explode_fasta(input, os.path.join(tmpdir, 'scaffolds'))
         # try thread pool
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=cpus+4) as executor:
             for k, v in coords.items():
                 busco_prlf = os.path.join(lineage, 'prfl', '{}.prfl'.format(k))
                 for i in v:
-                    contig = os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(i['contig']))
+                    contig = i['contig']
                     start = i['coords'][0] - offset
                     if start < 0:
                         start = 0
                     end = i['coords'][1] + offset
-                    if end > seq_records[i['contig']]:
-                        end = seq_records[i['contig']]
+                    if end > len(seq_records[contig]):
+                        end = len(seq_records[contig])
                     # send to executor
                     results.append(
                         executor.submit(
                             predict_and_validate,
+                            seq_records,
                             contig,
                             busco_prlf,
                             CutOffs,
@@ -151,17 +154,18 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
         if not silent:
             logger.info('Found {} BUSCOs in first pass, trying harder to find remaining {}'.format(
                 len(b_results), len(missing)))
-        filt_variants = os.path.join(tmpdir, 'filtered_ancestral_variants.fa')
+        filt_variants = tempfile.NamedTemporaryFile(suffix=".fasta")
         avariants = fasta2dict(os.path.join(lineage, 'ancestral_variants'), full_header=True)
         seen = set()
-        with open(filt_variants, 'w') as outfile:
+        with open(filt_variants.name, 'w') as outfile:
             for title, seq in avariants.items():
                 z, num = title.split(' ')
                 if z in missing:
                     seen.add(z)
                     outfile.write('>{}\n{}\n'.format(title, softwrap(seq)))
         logger.info('Trying to use ancestral variants to recover {} BUSCOs'.format(len(seen)))
-        coords2, njobs2 = blast_prefilter(input, filt_variants, logger, evalue=1e-5)
+        coords2, njobs2 = blast_prefilter(input, filt_variants.name, logger, cpus=cpus, evalue=1e-5)
+        filt_variants.close()
         if not silent:
             logger.info('Now launching {} augustus jobs for {} BUSCO models'.format(njobs2, len(coords2)))
 
@@ -171,17 +175,18 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
             for k, v in coords2.items():
                 busco_prlf = os.path.join(lineage, 'prfl', '{}.prfl'.format(k))
                 for i in v:
-                    contig = os.path.join(tmpdir, 'scaffolds', '{}.fa'.format(i['contig']))
+                    contig = i['contig']
                     start = i['coords'][0] - offset
                     if start < 0:
                         start = 0
                     end = i['coords'][1] + offset
-                    if end > seq_records[i['contig']]:
-                        end = seq_records[i['contig']]
+                    if end > len(seq_records[contig]):
+                        end = len(seq_records[contig])
                     # send to executor
                     results.append(
                         executor.submit(
                             predict_and_validate,
+                            seq_records,
                             contig,
                             busco_prlf,
                             CutOffs,
@@ -201,8 +206,7 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
                     b_results[b] = [res]
                 else:
                     b_results[b].append(res)
-        # clean up
-        shutil.rmtree(tmpdir)
+
         # finally loop through results, classify and reorganize
         b_final = {}
         missing = []
