@@ -8,7 +8,7 @@ from .__version__ import __version__
 from .log import startLogging
 from .search import blast_prefilter, hmmer_search_single, hmmer_search, tblastn_version
 from .augustus import proteinprofile, augustus_version, augustus_functional
-from .fasta import softwrap, getSeqRegions, translate, fasta2dict, fasta2lengths
+from .fasta import softwrap, getSeqRegions, translate, fasta2dict, fasta2lengths, dict2stats
 
 
 def load_config(lineage):
@@ -35,11 +35,27 @@ def load_cutoffs(lineage):
             if float(sigma) == 0.0:
                 sigma = 1
             if not busco in cutoffs:
-                cutoffs[busco] = {'sigma': float(sigma), 'length': int(length)}
+                cutoffs[busco] = {'sigma': float(sigma), 'length': int(float(length))}
             else:
                 cutoffs[busco]['sigma'] = float(sigma)
-                cutoffs[busco]['length'] = int(length)
+                cutoffs[busco]['length'] = int(float(length))
     return cutoffs
+
+
+def check_lineage(lineage):
+    lineage = os.path.abspath(lineage)
+    if not os.path.isdir(lineage):
+        return False, '{} is not a directory'.format(lineage)
+    dirs = ['prfl', 'hmms']
+    files = ['ancestral', 'ancestral_variants', 'dataset.cfg',
+             'lengths_cutoff', 'scores_cutoff']
+    for d in dirs:
+        if not os.path.isdir(os.path.join(lineage, d)):
+            return False, '{} directory was not found in {}'.format(d, lineage)
+    for f in files:
+        if not os.path.isfile(os.path.join(lineage, f)):
+            return False, '{} file is missing from {}'.format(f, lineage)
+    return True, ''
 
 
 def predict_and_validate(fadict, contig, prfl, cutoffs,
@@ -86,6 +102,13 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
              cpus=1, evalue=1e-50, offset=2000, silent=False, logger=False):
     if not logger:
         logger = startLogging()
+    # check that the lineage path/files all present
+    check, msg = check_lineage(lineage)
+    if not check:
+        logger.error('Error: {}'.format(msg))
+        sys.exit(1)
+
+    # parse the configs and cutoffs
     Config = load_config(lineage)
     CutOffs = load_cutoffs(lineage)
 
@@ -99,8 +122,15 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
             sys.exit(1)
         if not silent:
             logger.info('{} lineage contains {} BUSCO models'.format(Config['name'], len(CutOffs)))
+
         # load genome into dictionary
         seq_records = fasta2dict(input)
+        fa_stats = dict2stats(seq_records)
+        if not silent:
+            logger.info('Input genome is {} MB and {} contigs'.format(
+                round(fa_stats['size'] / 1e6, 2), fa_stats['n']
+            ))
+
         # run blast filter from ancesteral proteins
         query = os.path.join(lineage, 'ancestral')
         if not silent:
@@ -108,7 +138,8 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
         coords, njobs = blast_prefilter(input, query, logger, evalue=evalue, cpus=cpus)
         if not silent:
             logger.info('Now launching {} augustus/phymmer jobs for {} BUSCO models'.format(njobs, len(coords)))
-        # try thread pool
+
+        # run busco analysis using threadpool, limit io as much as possible
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=cpus+4) as executor:
             for k, v in coords.items():
@@ -159,16 +190,25 @@ def runbusco(input, lineage, mode='genome', species='anidulans',
         seen = set()
         with open(filt_variants.name, 'w') as outfile:
             for title, seq in avariants.items():
-                z, num = title.split(' ')
+                try:
+                    z, num = title.split(' ')
+                except ValueError:
+                    if '_' in title:
+                        z, num = title.rsplit('_', 1)
+                    else:
+                        z = title
                 if z in missing:
                     seen.add(z)
-                    outfile.write('>{}\n{}\n'.format(title, softwrap(seq)))
+                    outfile.write('>{} {}\n{}\n'.format(z, num, softwrap(seq)))
         logger.info('Trying to use ancestral variants to recover {} BUSCOs'.format(len(seen)))
         coords2, njobs2 = blast_prefilter(input, filt_variants.name, logger, cpus=cpus, evalue=1e-5)
         filt_variants.close()
         if not silent:
-            logger.info('Now launching {} augustus jobs for {} BUSCO models'.format(njobs2, len(coords2)))
-
+            logger.info('Now launching {} augustus/pyhmmer jobs for {} BUSCO models'.format(njobs2, len(coords2)))
+        if len(coords2) > len(seen):
+            logger.error('Something is wrong with parsing the acenstral variants.....')
+            print(coords2.keys())
+            sys.exit(1)
         # try thread pool
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=cpus+4) as executor:

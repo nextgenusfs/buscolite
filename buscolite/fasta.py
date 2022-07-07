@@ -404,6 +404,15 @@ def getSeqRegions(seqs, header, coordinates):
     return result
 
 
+def dict2stats(fadict):
+    stats = {'n': len(fadict)}
+    total = 0
+    for title, seq in fadict.items():
+        total += len(seq)
+    stats['size'] = total
+    return stats
+
+
 def softwrap(string, every=80):
     lines = []
     for i in range(0, len(string), every):
