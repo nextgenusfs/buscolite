@@ -4,6 +4,7 @@ import tempfile
 import concurrent.futures
 from natsort import natsorted
 import pyhmmer
+import pyfastx
 from .__version__ import __version__
 from .log import startLogging
 from .search import (
@@ -14,7 +15,7 @@ from .search import (
     pyhmmer_version,
 )
 from .augustus import proteinprofile, augustus_version, augustus_functional
-from .fasta import (
+from .fastx import (
     softwrap,
     getSeqRegions,
     translate,
@@ -167,8 +168,12 @@ def runbusco(
         aug_version = augustus_version()
         if verbosity >= 2:
             logger.info(
-                "BUSCOlite v{}; Augustus v{}; miniprot v{}; pyhmmer v{}".format(
-                    __version__, aug_version, miniprot_version(), pyhmmer_version()
+                "BUSCOlite v{}; Augustus v{}; miniprot v{}; pyhmmer v{}; pyfastx v{}".format(
+                    __version__,
+                    aug_version,
+                    miniprot_version(),
+                    pyhmmer_version(),
+                    pyfastx.__version__,
                 )
             )
         if check_augustus:

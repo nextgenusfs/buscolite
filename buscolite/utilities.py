@@ -1,4 +1,5 @@
 import subprocess
+import signal
 import sys
 import os
 import errno
@@ -141,6 +142,26 @@ def execute(cmd):
     return_code = popen.wait()
     if return_code:
         raise subprocess.CalledProcessError(return_code, cmd)
+
+
+def execute_timeout(cmd, timeout=120):
+    # stream execute but add a timeout
+    DEVNULL = open(os.devnull, "w")
+    try:
+        p = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL
+        )
+        return_code = p.wait(timeout=timeout)
+        if return_code:
+            raise subprocess.CalledProcessError(return_code, cmd)
+        else:
+            for stdout_line in iter(p.stdout.readline, ""):
+                yield stdout_line
+            p.stdout.close()
+    except subprocess.TimeoutExpired:
+        # print(f"Timeout for {cmd} ({timeout}s) expired", file=sys.stderr)
+        p.terminate()
+        return ""
 
 
 def check_inputs(inputs):

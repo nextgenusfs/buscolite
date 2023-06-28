@@ -1,7 +1,7 @@
 import sys
 import os
 import subprocess
-from .utilities import execute
+from .utilities import execute, execute_timeout
 
 
 def augustus_version():
@@ -80,6 +80,7 @@ def proteinprofile(
         "--softmasking=1",
         "--gff3=on",
         "--UTR=off",
+        "--genemodel=exactlyone",
         "--proteinprofile={}".format(prfl),
         "--stopCodonExcludedFromCDS=False",
         "--strand={}".format(strand),
@@ -89,7 +90,7 @@ def proteinprofile(
     cmd.append(fasta)
     preds = {}
     ID = None
-    for line in execute(cmd):
+    for line in execute_timeout(cmd):
         if "\tAUGUSTUS\tgene\t" in line:
             cols = line.rstrip().split("\t")
             ID = cols[8].replace("ID=", "")
