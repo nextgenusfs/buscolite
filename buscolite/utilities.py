@@ -3,145 +3,121 @@ import sys
 import os
 import errno
 from natsort import natsorted
-from collections import OrderedDict
 from .__version__ import __version__
 
 
-def summary_writer(result, missing, cmd, cfg, handle, mode='genome'):
+def summary_writer(result, missing, cmd, cfg, handle, mode="genome"):
     for x in missing:
-        result[x] = {'status': 'missing'}
-    handle.write('# BUSCOlite v{}\n'.format(__version__))
-    handle.write('# The lineage dataset is: {} (Creation date: {}, number of species: {}, number of BUSCOs: {})\n'.format(
-        cfg['name'], cfg['creation_date'], cfg['number_of_species'], cfg['number_of_BUSCOs']
-    ))
-    handle.write('# To reproduce this run: {}\n'.format(' '.join(cmd)))
-    handle.write('#\n')
-    if mode == 'genome':
-        handle.write('# Busco id\tStatus\tContig\tStart\tEnd\tHMM_score\tLength\tblast_evalue\tblast_score\n')
-        for k, v in natsorted(result.items()):
-            if '_' in k:
-                busco = k.rsplit('_', 1)[0]
-            else:
-                busco = k
-            if v['status'] == 'missing':
-                handle.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
-                    busco, v['status'],'','','','','','',''))
-            else:
-                handle.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
-                    busco, v['status'], v['contig'], min(v['location']), max(v['location']),
-                    round(v['hmmer']['bitscore'], 2), len(v['translation'].rstrip('*')),
-                    v['blast_evalue'], v['blast_score']
-                    ))
-
-    elif mode == 'proteins':
-        handle.write('# Busco id\tStatus\tSequence\tScore\tLength\n')
-        for k, v in result.items():
-            if '_' in k:
-                busco = k.rsplit('_', 1)[0]
-            else:
-                busco = k
-            if v['status'] == 'missing':
-                handle.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
-                    busco, v['status'],'','','','','','',''))
-            else:
-                handle.write('{}\t{}\t{}\t{}\t{}\n'.format(
-                    busco, v['status'], v['hit'], round(v['bitscore'], 2), v['length']
-                    ))
-
-
-
-def gffwriter(result, handle):
-    cleaned = {}
-    for k, v in result.items():
-        if v['status'] != 'missing':
-            cleaned[k] = v
-    # sort results by contig and location
-    def _sortDict(d):
-        return (d[1]["contig"], d[1]["location"][0])
-    sGenes = natsorted(iter(cleaned.items()), key=_sortDict)
-    sortedGenes = OrderedDict(sGenes)
-    # write GFF3 output from runbusco dictionary result
-    handle.write("##gff-version 3\n")
-    for k, v in sortedGenes.items():
-        extraAnnots = 'Note=status={},hmmer_score={},hmmer_evalue={},tblastn_evalue:{},tblastn_score:{};'.format(
-            v['status'], round(v['hmmer']['bitscore'], 2), round(v['hmmer']['evalue'], 2),
-            v['blast_evalue'], v['blast_score']
+        result[x] = {"status": "missing"}
+    handle.write("# BUSCOlite v{}\n".format(__version__))
+    handle.write(
+        "# The lineage dataset is: {} (Creation date: {}, number of species: {}, number of BUSCOs: {})\n".format(
+            cfg["name"],
+            cfg["creation_date"],
+            cfg["number_of_species"],
+            cfg["number_of_BUSCOs"],
         )
-
-        handle.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tID={};{}\n'.format(
-            v['contig'], 'buscolite', 'gene', min(v['location']),
-            max(v['location']), round(v['hmmer']['bitscore'], 2), v['strand'], '.', k, extraAnnots
-        ))
-        handle.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\tID={}-T1;Parent={}\n'.format(
-            v['contig'], 'buscolite', 'mRNA', min(v['location']),
-            max(v['location']), round(v['hmmer']['bitscore'], 2), v['strand'], '.', k, k
-        ))
-        if v['strand'] == '+':
-            sortedCDS = sorted(v['coords'], key=lambda tup: tup[0])
-            current_phase = v['phase'][0]
-        else:
-            sortedCDS = sorted(v['coords'], key=lambda tup: tup[0], reverse=True)
-            current_phase = v['phase'][-1]
-        num_cds = len(sortedCDS)
-        for y in range(0, num_cds):
-            handle.write(
-                "{:}\t{:}\texon\t{:}\t{:}\t.\t{:}\t{:}\tID={:}.exon{:};Parent={:}-T1;\n".format(
-                    v["contig"],
-                    'buscolite',
-                    sortedCDS[y][0],
-                    sortedCDS[y][1],
-                    v["strand"],
-                    current_phase,
-                    k,
-                    y+1,
-                    k
+    )
+    handle.write("# To reproduce this run: {}\n".format(" ".join(cmd)))
+    handle.write("#\n")
+    if mode == "genome":
+        handle.write(
+            "# Busco id\tStatus\tContig\tStart\tEnd\tHMM_score\tLength\tminiprot_score\n"
+        )
+        for k, v in natsorted(result.items()):
+            if "_" in k:
+                busco = k.rsplit("_", 1)[0]
+            else:
+                busco = k
+            if v["status"] == "missing":
+                handle.write(
+                    "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(
+                        busco, v["status"], "", "", "", "", "", "", ""
+                    )
                 )
-            )
-            handle.write(
-                "{:}\t{:}\tCDS\t{:}\t{:}\t.\t{:}\t{:}\tID={:}.cds;Parent={:}-T1;\n".format(
-                    v["contig"],
-                    'buscolite',
-                    sortedCDS[y][0],
-                    sortedCDS[y][1],
-                    v["strand"],
-                    current_phase,
-                    k,
-                    k
+            else:
+                handle.write(
+                    "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(
+                        busco,
+                        v["status"],
+                        v["contig"],
+                        min(v["location"]),
+                        max(v["location"]),
+                        round(v["hmmer"]["bitscore"], 2),
+                        len(v["translation"].rstrip("*")),
+                        v["miniprot_score"],
+                    )
                 )
-            )
-            current_phase = (
-                current_phase
-                - (int(sortedCDS[y][1]) - int(sortedCDS[y][0]) + 1)
-            ) % 3
-            if current_phase == 3:
-                current_phase = 0
+
+    elif mode == "proteins":
+        handle.write("# Busco id\tStatus\tSequence\tScore\tLength\n")
+        for k, v in result.items():
+            if "_" in k:
+                busco = k.rsplit("_", 1)[0]
+            else:
+                busco = k
+            if v["status"] == "missing":
+                handle.write(
+                    "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(
+                        busco, v["status"], "", "", "", "", "", "", ""
+                    )
+                )
+            else:
+                handle.write(
+                    "{}\t{}\t{}\t{}\t{}\n".format(
+                        busco,
+                        v["status"],
+                        v["hit"],
+                        round(v["bitscore"], 2),
+                        v["length"],
+                    )
+                )
 
 
-def runprocess(cmd, stdout=False, stderr=False, cwd='.', debug=False):
+def overlap(start1, end1, start2, end2):
+    """how much does the range (start1, end1) overlap with (start2, end2)"""
+    return max(
+        max((end2 - start1), 0) - max((end2 - end1), 0) - max((start2 - start1), 0), 0
+    )
+
+
+def any_overlap(query, lcoords):
+    # if any list of coords overlaps with query
+    v = False
+    for x in lcoords:
+        if overlap(query[0], query[1], x[0], x[1]) > 0:
+            v = True
+    return v
+
+
+def runprocess(cmd, stdout=False, stderr=False, cwd=".", debug=False):
     if not stdout and not stderr:
-            proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
     elif stdout and not stderr:
-        with open(stdout, 'w') as outfile:
-            proc = subprocess.Popen(cmd, cwd=cwd, stdout=outfile,
-                    stderr=subprocess.PIPE)
+        with open(stdout, "w") as outfile:
+            proc = subprocess.Popen(
+                cmd, cwd=cwd, stdout=outfile, stderr=subprocess.PIPE
+            )
     elif not stdout and stderr:
-        with open(stderr, 'w') as outfile:
-            proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE,
-                                    stderr=outfile)
+        with open(stderr, "w") as outfile:
+            proc = subprocess.Popen(
+                cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=outfile
+            )
     elif stdout and stderr:
         if stdout == stderr:
-            with open(stdout, 'w') as outfile:
-                proc = subprocess.Popen(cmd, cwd=cwd, stdout=outfile,
-                                        stderr=outfile)
+            with open(stdout, "w") as outfile:
+                proc = subprocess.Popen(cmd, cwd=cwd, stdout=outfile, stderr=outfile)
         else:
-            with open(stdout, 'w') as outfile1:
-                with open(stderr, 'w') as outfile2:
-                    proc = subprocess.Popen(cmd, cwd=cwd, stdout=outfile1,
-                                            stderr=outfile2)
+            with open(stdout, "w") as outfile1:
+                with open(stderr, "w") as outfile2:
+                    proc = subprocess.Popen(
+                        cmd, cwd=cwd, stdout=outfile1, stderr=outfile2
+                    )
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
-        sys.stderr.write('CMD ERROR: {}'.format(' '.join(cmd)))
+        sys.stderr.write("CMD ERROR: {}".format(" ".join(cmd)))
         if stdout:
             sys.stderr.write(stdout.decode("utf-8"))
         if stderr:
@@ -155,9 +131,10 @@ def runprocess(cmd, stdout=False, stderr=False, cwd='.', debug=False):
 
 
 def execute(cmd):
-    DEVNULL = open(os.devnull, 'w')
-    popen = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                             universal_newlines=True, stderr=DEVNULL)
+    DEVNULL = open(os.devnull, "w")
+    popen = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL
+    )
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line
     popen.stdout.close()

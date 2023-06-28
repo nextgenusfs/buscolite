@@ -3,7 +3,7 @@
 
 # BUSCOlite: simplified BUSCO analysis for gene prediction
 
-BUSCOlite can run the tblastn/Augustus mediated genome predictions as well as the [pyhmmer](https://pyhmmer.readthedocs.io/en/stable/index.html) HMM predictions using the BUSCO v9 or v10 databases. It also provides a python API to run busco analysis from within python, ie to be used inside the eukaryotic gene prediction pipeline Funannotate.
+BUSCOlite can run the miniprot/Augustus mediated genome predictions as well as the [pyhmmer](https://pyhmmer.readthedocs.io/en/stable/index.html) HMM predictions using the BUSCO v9 or v10 databases. It also provides a python API to run busco analysis from within python, ie to be used inside the eukaryotic gene prediction pipeline Funannotate.
 
 This tool is not meant to be a replacment of BUSCO, for most general use cases you should continue to use [BUSCOv5](https://busco.ezlab.org)
 
@@ -11,7 +11,7 @@ BUSCO models/lineages can be downloaded from the BUSCO site: [v5](https://busco-
 
 ##### There are limited dependencies with BUSCOlite:
 * [augustus](https://github.com/Gaius-Augustus/Augustus) (note: many versions on conda have non-functional PPX/--proteinprofile mode)
-* tblastn (blast+ package, tblastn multithreading was unstable for several years, BUSCOlite might use only 1 cpu depending on your version)
+* [miniprot](https://github.com/lh3/miniprot)
 * [pyhmmer](https://pyhmmer.readthedocs.io/en/stable/index.html)
 * [natsort](https://pypi.org/project/natsort/)
 
