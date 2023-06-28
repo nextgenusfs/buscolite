@@ -252,7 +252,7 @@ def fasta2dict(fasta, full_header=False):
 
     """
     seqs = OrderedDict()
-    for title, seq in pyfastx.Fasta(fasta, full_header=True):
+    for title, seq in pyfastx.Fasta(fasta, full_header=True, build_index=False):
         if full_header:
             title = title
         else:
@@ -282,7 +282,7 @@ def fasta2headers(fasta, full_header=False):
     """
     # generate a set of the contig/scaffold names
     headers = set()
-    for title, seq in pyfastx.Fasta(fasta, full_header=True):
+    for title, seq in pyfastx.Fasta(fasta, full_header=True, build_index=False):
         if full_header:
             title = title
         else:
@@ -312,7 +312,7 @@ def fasta2lengths(fasta, full_header=False):
 
     """
     seqs = {}
-    for title, seq in pyfastx.Fasta(fasta, full_header=True):
+    for title, seq in pyfastx.Fasta(fasta, full_header=True, build_index=False):
         if full_header:
             title = title
         else:
@@ -341,7 +341,7 @@ def explode_fasta(fasta, folder, suffix=".fa"):
     if not os.path.isdir(folder):
         os.makedirs(folder)
     seqs = {}
-    for title, seq in pyfastx.Fasta(fasta, full_header=True):
+    for title, seq in pyfastx.Fasta(fasta, full_header=True, build_index=False):
         if " " in title:
             title = title.split(" ", 1)[0]
         seqs[title] = len(seq)
