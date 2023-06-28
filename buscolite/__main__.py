@@ -118,7 +118,7 @@ def parse_args(args):
         type=int,
         default=2000,
         metavar="",
-        help="Length of flanking region to use for augustus prediction from tblastn hits.",
+        help="Length of flanking region to use for augustus prediction from miniprot hits.",
     )
     help_args = parser.add_argument_group("Help")
     help_args.add_argument(

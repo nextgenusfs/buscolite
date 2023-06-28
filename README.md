@@ -1,4 +1,4 @@
-[![Latest Github release](https://img.shields.io/github/release/nextgenusfs/gfftk.svg)](https://github.com/nextgenusfs/buscolite/releases/latest)
+[![Latest Github release](https://img.shields.io/github/release/nextgenusfs/buscolite.svg)](https://github.com/nextgenusfs/buscolite/releases/latest)
 ![Conda](https://img.shields.io/conda/dn/bioconda/buscolite)
 
 # BUSCOlite: simplified BUSCO analysis for gene prediction
@@ -13,6 +13,7 @@ BUSCO models/lineages can be downloaded from the BUSCO site: [v5](https://busco-
 * [augustus](https://github.com/Gaius-Augustus/Augustus) (note: many versions on conda have non-functional PPX/--proteinprofile mode)
 * [miniprot](https://github.com/lh3/miniprot)
 * [pyhmmer](https://pyhmmer.readthedocs.io/en/stable/index.html)
+* [pyfastx](https://github.com/lmdu/pyfastx)
 * [natsort](https://pypi.org/project/natsort/)
 
 #### Why?

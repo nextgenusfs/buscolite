@@ -4,7 +4,7 @@ import re
 import sys
 import concurrent.futures
 from natsort import natsorted
-from .fasta import fasta2dict, translate, codon_table, getSeqRegions, RevComp
+from .fastx import translate, codon_table, getSeqRegions, RevComp
 
 
 def gffwriter(result, handle):

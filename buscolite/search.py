@@ -5,8 +5,8 @@ import os
 import shutil
 import pyhmmer
 from .utilities import runprocess, execute
-from .fasta import fasta2headers, fasta2dict
-from .gff import longest_orf, validate_models
+from .fastx import fasta2headers, fasta2dict
+from .gff import validate_models
 from urllib.parse import unquote
 
 
