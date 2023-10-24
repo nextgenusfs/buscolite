@@ -26,11 +26,19 @@ def main():
         verbosity=3,
     )
     logger.info(
-        "Analysis complete:\n single-copy={}\n fragmented={}\n duplicated={}\n total={}".format(
+        "Assembly completeness:\n complete={:} [{:.2%}]\n single-copy={:} [{:.2%}]\n fragmented={:} [{:.2%}]\n duplicated={:} [{:.2%}]\n missing={:} [{:.2%}]\n total={:} [{:.2%}]".format(
+            stats["single-copy"] + stats["duplicated"],
+            ((stats["single-copy"] + stats["duplicated"]) / float(stats["total"])),
             stats["single-copy"],
+            (stats["single-copy"] / float(stats["total"])),
             stats["fragmented"],
+            (stats["fragmented"] / float(stats["total"])),
             stats["duplicated"],
+            (stats["duplicated"] / float(stats["total"])),
+            stats["missing"],
+            (stats["missing"] / float(stats["total"])),
             stats["total"],
+            (stats["total"] / float(stats["total"])),
         )
     )
     # write gff if genome mode

@@ -458,9 +458,14 @@ def runbusco(
         for b in CutOffs.keys():
             if b not in b_results:
                 missing.append(b)
-        stats = {"total": 0, "single-copy": 0, "fragmented": 0, "duplicated": 0}
+        stats = {
+            "total": len(CutOffs),
+            "single-copy": 0,
+            "fragmented": 0,
+            "duplicated": 0,
+            "missing": len(missing),
+        }
         for k, v in natsorted(b_results.items()):
-            stats["total"] += 1
             if len(v) > 1:  # duplicates
                 for i, x in enumerate(
                     sorted(v, key=lambda y: y["bitscore"], reverse=True)
