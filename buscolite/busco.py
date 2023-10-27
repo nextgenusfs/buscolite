@@ -216,7 +216,7 @@ def runbusco(
             )
         # run busco analysis using threadpool, limit io as much as possible
         results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 2) as executor:
             for k, v in coords.items():
                 busco_prlf = os.path.join(lineage, "prfl", "{}.prfl".format(k))
                 for i in v:
@@ -320,7 +320,7 @@ def runbusco(
 
         # try thread pool
         results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 2) as executor:
             for k, v in coords2.items():
                 busco_prlf = os.path.join(lineage, "prfl", "{}.prfl".format(k))
                 for i in v:
@@ -438,7 +438,7 @@ def runbusco(
             )
         # now we can loop over the hmms in the lineage and run hmmer on each
         results = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 2) as executor:
             for f in os.listdir(os.path.join(lineage, "hmms")):
                 if f.endswith(".hmm"):
                     hmmfile = os.path.join(lineage, "hmms", f)
