@@ -1,4 +1,4 @@
-import sys
+
 import os
 import tempfile
 import concurrent.futures
@@ -40,7 +40,7 @@ def load_cutoffs(lineage):
     with open(os.path.join(lineage, "scores_cutoff"), "r") as infile:
         for line in infile:
             busco, score = line.rstrip().split("\t")
-            if not busco in cutoffs:
+            if busco not in cutoffs:
                 cutoffs[busco] = {"score": float(score)}
             else:
                 cutoffs[busco]["score"] = float(score)
@@ -49,7 +49,7 @@ def load_cutoffs(lineage):
             busco, _, sigma, length = line.rstrip().split("\t")
             if float(sigma) == 0.0:
                 sigma = 1
-            if not busco in cutoffs:
+            if busco not in cutoffs:
                 cutoffs[busco] = {"sigma": float(sigma), "length": int(float(length))}
             else:
                 cutoffs[busco]["sigma"] = float(sigma)
@@ -94,6 +94,7 @@ def predict_and_validate(
     t_fasta = tempfile.NamedTemporaryFile(suffix=".fasta")
     with open(t_fasta.name, "w") as f:
         f.write(">{}\n{}\n".format(contig, fadict[contig][start:end]))
+
     # run augustus on the regions
     aug_preds = proteinprofile(
         t_fasta.name,
@@ -249,6 +250,7 @@ def runbusco(
                             i["score"],
                         )
                     )
+
         # process mt results
         if len(complete) > 0:
             b_results = complete
@@ -257,7 +259,7 @@ def runbusco(
         for r in results:
             if isinstance(r.result(), tuple):
                 b, res = r.result()
-                if not b in b_results:
+                if b not in b_results:
                     b_results[b] = [res]
                 else:
                     b_results[b].append(res)
@@ -313,7 +315,7 @@ def runbusco(
 
         if len(complete2) > 0:
             for k, v in complete2.items():
-                if not k in b_results:
+                if k not in b_results:
                     b_results[k] = v
                 else:
                     b_results[k] += v
@@ -357,7 +359,7 @@ def runbusco(
         for r in results:
             if isinstance(r.result(), tuple):
                 b, res = r.result()
-                if not b in b_results:
+                if b not in b_results:
                     b_results[b] = [res]
                 else:
                     b_results[b].append(res)
@@ -368,7 +370,7 @@ def runbusco(
         for b in CutOffs.keys():
             if b not in b_results:
                 missing.append(b)
-        stats = {"total": 0, "single-copy": 0, "fragmented": 0, "duplicated": 0}
+        stats = {"total": 0, "single-copy": 0, "fragmented": 0, "duplicated": 0, "missing": len(missing)}
         for k, v in natsorted(b_results.items()):
             stats["total"] += 1
             if (

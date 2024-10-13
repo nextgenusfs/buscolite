@@ -1,7 +1,7 @@
 import sys
 import os
 import subprocess
-from .utilities import execute, execute_timeout
+from .utilities import execute_timeout
 
 
 def augustus_version():
