@@ -369,7 +369,7 @@ def validate_and_translate_models(
                     else:
                         logger(
                             "ERROR nonsensical strand ({}) for gene {}\n".format(
-                                [v["strand"], v["ids"][i]]
+                                v["strand"], v["ids"][i]
                             )
                         )
                 results["cds_transcript"].append(cdsSeq)

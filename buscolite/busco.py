@@ -90,6 +90,24 @@ def predict_and_validate(
     configpath,
     blast_score,
 ):
+    """
+    Predict and validate protein coding regions using Augustus and HMMER.
+
+    Args:
+        fadict (dict): Dictionary containing contig sequences.
+        contig (str): Name of the contig.
+        prfl (str): Path to the protein profile file.
+        cutoffs (dict): Dictionary of cutoff scores for each protein.
+        species (str): Species name for Augustus prediction.
+        start (int): Start position of the region.
+        end (int): End position of the region.
+        strand (str): Strand of the region ('+' or '-') for prediction.
+        configpath (str): Path to the configuration file for Augustus.
+        blast_score (float): BLAST score threshold for validation.
+
+    Returns:
+        tuple: A tuple containing the BUSCO name and the final prediction dictionary if a valid prediction is found, otherwise False.
+    """
     # augustus no longer accepts fasta from stdin, so write tempfile
     t_fasta = tempfile.NamedTemporaryFile(suffix=".fasta")
     with open(t_fasta.name, "w") as f:
@@ -152,6 +170,26 @@ def runbusco(
     logger=False,
     check_augustus=True,
 ):
+    """
+    Run BUSCO analysis on genome or protein sequences.
+
+    Parameters:
+    - input (str): Path to the input genome or protein sequences.
+    - lineage (str): Path to the BUSCO lineage directory.
+    - mode (str, optional): Analysis mode, either 'genome' or 'proteins'. Defaults to 'genome'.
+    - species (str, optional): Species name for Augustus prediction. Defaults to 'anidulans'.
+    - cpus (int, optional): Number of CPUs to use. Defaults to 1.
+    - offset (int, optional): Offset value for sequence extraction. Defaults to 2000.
+    - verbosity (int, optional): Level of verbosity for logging. Defaults to 3.
+    - logger (bool or logger object, optional): Custom logger object. Defaults to False.
+    - check_augustus (bool, optional): Flag to check Augustus functionality. Defaults to True.
+
+    Returns:
+    - b_final (dict): Final BUSCO results.
+    - missing (list): List of BUSCOs not found.
+    - stats (dict): Statistics of BUSCO analysis.
+    - Config (dict): Parsed configuration details.
+    """
     if not logger:
         logger = startLogging()
     # check that the lineage path/files all present
@@ -451,7 +489,7 @@ def runbusco(
             if isinstance(r.result(), list):
                 for x in r.result():
                     if x["bitscore"] > CutOffs[x["name"]]["score"]:
-                        if not x["name"] in b_results:
+                        if x["name"] not in b_results:
                             b_results[x["name"]] = [x]
                         else:
                             b_results[x["name"]].append(x)
