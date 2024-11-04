@@ -36,7 +36,7 @@ buscolite = "buscolite.__main__:main"
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "buscolite/data/*",
+  "data/*",
   "README.md",
   "LICENSE.md"
 ]
