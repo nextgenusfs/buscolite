@@ -4,7 +4,7 @@ import sys
 import os
 import errno
 from natsort import natsorted
-from .__version__ import __version__
+from .__init__ import __version__
 
 
 def summary_writer(result, missing, cmd, cfg, handle, mode="genome"):
@@ -33,7 +33,14 @@ def summary_writer(result, missing, cmd, cfg, handle, mode="genome"):
             if v["status"] == "missing":
                 handle.write(
                     "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(
-                        busco, v["status"], "", "", "", "", "", "", ""
+                        busco,
+                        v["status"],
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
                     )
                 )
             else:

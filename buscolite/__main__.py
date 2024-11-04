@@ -4,7 +4,7 @@ import sys
 import os
 import argparse
 import json
-from .__version__ import __version__
+from .__init__ import __version__
 from .help_formatter import MyParser, MyHelpFormatter
 from .busco import runbusco
 from .utilities import summary_writer

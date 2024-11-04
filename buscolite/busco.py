@@ -1,11 +1,10 @@
-
 import os
 import tempfile
 import concurrent.futures
 from natsort import natsorted
 import pyhmmer
 import pyfastx
-from .__version__ import __version__
+from .__init__ import __version__
 from .log import startLogging
 from .search import (
     hmmer_search_single,
@@ -408,7 +407,13 @@ def runbusco(
         for b in CutOffs.keys():
             if b not in b_results:
                 missing.append(b)
-        stats = {"total": 0, "single-copy": 0, "fragmented": 0, "duplicated": 0, "missing": len(missing)}
+        stats = {
+            "total": 0,
+            "single-copy": 0,
+            "fragmented": 0,
+            "duplicated": 0,
+            "missing": len(missing),
+        }
         for k, v in natsorted(b_results.items()):
             stats["total"] += 1
             if (
