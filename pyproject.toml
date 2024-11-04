@@ -16,7 +16,7 @@ dependencies = [
     "pyhmmer>=0.10.15",
     "pyfastx>=2.0.0",
 ]
-license = {file = "LICENSE"}
+license = {file = "LICENSE.md"}
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: BSD License",
