@@ -34,9 +34,10 @@ Repository = "https://github.com/nextgenusfs/buscolitegit"
 [project.scripts]
 buscolite = "buscolite.__main__:main"
 
-[tool.hatch.build.targets.sdist]
+[tool.hatch.build]
 include = [
-  "data/*",
+  "buscolite/*.py",
+  "buscolite/data/*",
   "README.md",
   "LICENSE.md"
 ]
