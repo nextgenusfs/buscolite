@@ -1,9 +1,10 @@
 import subprocess
-from pkg_resources import parse_version
 import uuid
 import os
 import shutil
 import pyhmmer
+import importlib.metadata
+from packaging.version import parse as parse_version
 from .utilities import runprocess, execute
 from .fastx import fasta2headers, fasta2dict
 from .gff import validate_models
@@ -11,6 +12,14 @@ from urllib.parse import unquote
 
 
 def tblastn_version():
+    """
+    Get the version of tblastn installed on the system.
+
+    Returns
+    -------
+    str
+        The version string of tblastn
+    """
     p1 = subprocess.Popen(
         ["tblastn", "-version"],
         stdout=subprocess.PIPE,
@@ -23,6 +32,14 @@ def tblastn_version():
 
 
 def miniprot_version():
+    """
+    Get the version of miniprot installed on the system.
+
+    Returns
+    -------
+    str
+        The version string of miniprot
+    """
     p1 = subprocess.Popen(
         ["miniprot", "--version"],
         stdout=subprocess.PIPE,
@@ -34,6 +51,14 @@ def miniprot_version():
 
 
 def pyhmmer_version():
+    """
+    Get the version of pyhmmer installed on the system.
+
+    Returns
+    -------
+    str
+        The version string of pyhmmer
+    """
     return pyhmmer.__version__
 
 
@@ -41,23 +66,33 @@ def miniprot_prefilter(
     input, query, cutoffs, tmpdir=False, cpus=1, maxhits=3, maxintron=10000, buscodb="."
 ):
     """
-    Prefilters alignments for augustus using miniprot.
+    Prefilter alignments using miniprot for BUSCO analysis.
 
     Parameters
     ----------
-    input : filename
-        DNA (genome) sequence as nucleotides
-    query : filename
-        Protein (amino acids) sequences
-    logger : int
-        phase to start translation [0,1,2]
+    input : str
+        Path to the input genome FASTA file
+    query : str
+        Path to the query protein FASTA file
+    cutoffs : dict
+        Dictionary containing score cutoffs for each BUSCO model
+    tmpdir : str or bool, optional
+        Path to temporary directory, or False to use system default
+    cpus : int, optional
+        Number of CPU threads to use (default: 1)
+    maxhits : int, optional
+        Maximum number of hits to return per query (default: 3)
+    maxintron : int, optional
+        Maximum intron size (default: 10000)
+    buscodb : str, optional
+        Path to the BUSCO database directory (default: ".")
 
     Returns
     -------
-    results : dict
-        query seq id keyed dictionary
-
+    dict
+        Dictionary containing filtered alignment results
     """
+    # Continue with function implementation
     # setup tmpdir
     if not tmpdir:
         tmpdir = os.path.join("/tmp", str(uuid.uuid4()))
@@ -335,18 +370,27 @@ def blast_prefilter(
 
     Parameters
     ----------
-    input : filename
-        DNA (genome) sequence as nucleotides
-    query : filename
-        Protein (amino acids) sequences
-    logger : int
-        phase to start translation [0,1,2]
+    input : str
+        Path to the input genome FASTA file
+    query : str
+        Path to the query protein FASTA file
+    logger : object
+        Logger object for logging messages
+    tmpdir : str or bool, optional
+        Path to temporary directory, or False to use system default
+    evalue : float, optional
+        E-value threshold for BLAST hits (default: 1e-3)
+    cpus : int, optional
+        Number of CPU threads to use (default: 1)
+    maxhits : int, optional
+        Maximum number of hits to return per query (default: 3)
+    maxintron : int, optional
+        Maximum intron size (default: 10000)
 
     Returns
     -------
-    results : dict
-        query seq id keyed dictionary
-
+    tuple
+        (dict, int) - Dictionary containing filtered alignment results and number of jobs
     """
     # figure out cpus
     if cpus > 1:  # need to see if tblastn is safe multithreading
@@ -484,6 +528,21 @@ def blast_prefilter(
 
 
 def merge_overlapping_hits(queryList, fluff=10000):
+    """
+    Merge overlapping or nearby hits from BLAST or miniprot searches.
+
+    Parameters
+    ----------
+    queryList : list
+        List of dictionaries containing hit information with 'coords' key
+    fluff : int, optional
+        Maximum distance between hits to consider them for merging (default: 10000)
+
+    Returns
+    -------
+    list
+        List of merged hits
+    """
     if len(queryList) < 2:
         return queryList
     # sort by coords and try to merge if within fluff
@@ -504,6 +563,25 @@ def merge_overlapping_hits(queryList, fluff=10000):
 
 
 def hmmer_search_single(hmmfile, seq):
+    """
+    Search a single protein sequence against an HMM profile using pyhmmer.
+
+    Parameters
+    ----------
+    hmmfile : str
+        Path to the HMM profile file
+    seq : str
+        Protein sequence to search
+
+    Returns
+    -------
+    list
+        List of dictionaries containing search results with the following keys:
+        - name: Name of the HMM profile
+        - bitscore: Bit score of the hit
+        - evalue: E-value of the hit
+        - domains: List of domain hits with coordinates and scores
+    """
     hmm = next(pyhmmer.plan7.HMMFile(hmmfile))
     prot = pyhmmer.easel.TextSequence(sequence=seq)
     alphabet = pyhmmer.easel.Alphabet.amino()
@@ -534,6 +612,26 @@ def hmmer_search_single(hmmfile, seq):
 
 
 def hmmer_search(hmmfile, sequences):
+    """
+    Search multiple protein sequences against an HMM profile using pyhmmer.
+
+    Parameters
+    ----------
+    hmmfile : str
+        Path to the HMM profile file
+    sequences : list
+        List of digitized protein sequences to search
+
+    Returns
+    -------
+    list
+        List of dictionaries containing search results with the following keys:
+        - name: Name of the HMM profile
+        - hit: Name of the sequence that matched
+        - bitscore: Bit score of the hit
+        - evalue: E-value of the hit
+        - domains: List of domain hits with coordinates and scores
+    """
     hmm = next(pyhmmer.plan7.HMMFile(hmmfile))
     results = []
     for top_hits in pyhmmer.hmmsearch([hmm], sequences):

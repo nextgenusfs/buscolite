@@ -13,6 +13,12 @@ from .log import startLogging
 
 
 def main():
+    """
+    Main entry point for the BUSCOlite command-line interface.
+
+    This function parses command-line arguments, runs the BUSCO analysis,
+    and writes the output files (GFF3, TSV summary, and JSON results).
+    """
     args = parse_args(sys.argv[1:])
     logger = startLogging()
     d, m, stats, cfg = runbusco(
@@ -65,6 +71,19 @@ def main():
 
 
 def parse_args(args):
+    """
+    Parse command-line arguments for BUSCOlite.
+
+    Parameters
+    ----------
+    args : list
+        List of command-line arguments to parse
+
+    Returns
+    -------
+    argparse.Namespace
+        Parsed command-line arguments
+    """
     description = "BUSCOlite: simplified BUSCO analysis for genome annotation"
     parser = MyParser(
         description=description, formatter_class=MyHelpFormatter, add_help=False

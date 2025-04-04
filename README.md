@@ -1,5 +1,7 @@
 [![Latest Github release](https://img.shields.io/github/release/nextgenusfs/buscolite.svg)](https://github.com/nextgenusfs/buscolite/releases/latest)
 ![Conda](https://img.shields.io/conda/dn/bioconda/buscolite)
+[![Tests](https://github.com/nextgenusfs/buscolite/actions/workflows/tests.yml/badge.svg)](https://github.com/nextgenusfs/buscolite/actions/workflows/tests.yml)
+[![codecov](https://codecov.io/gh/nextgenusfs/buscolite/branch/master/graph/badge.svg)](https://codecov.io/gh/nextgenusfs/buscolite)
 
 # BUSCOlite: simplified BUSCO analysis for gene prediction
 

@@ -26,6 +26,19 @@ from .utilities import any_overlap
 
 
 def load_config(lineage):
+    """
+    Load the BUSCO dataset configuration file.
+
+    Parameters
+    ----------
+    lineage : str
+        Path to the BUSCO lineage directory containing the dataset.cfg file
+
+    Returns
+    -------
+    dict
+        Dictionary containing the configuration parameters from dataset.cfg
+    """
     config = {}
     with open(os.path.join(lineage, "dataset.cfg"), "r") as infile:
         for line in infile:
@@ -35,6 +48,20 @@ def load_config(lineage):
 
 
 def load_cutoffs(lineage):
+    """
+    Load the BUSCO score and length cutoffs from the lineage directory.
+
+    Parameters
+    ----------
+    lineage : str
+        Path to the BUSCO lineage directory containing the cutoff files
+
+    Returns
+    -------
+    dict
+        Dictionary containing the score and length cutoffs for each BUSCO model
+        Format: {busco_id: {"score": float, "sigma": float, "length": int}}
+    """
     cutoffs = {}
     with open(os.path.join(lineage, "scores_cutoff"), "r") as infile:
         for line in infile:
@@ -57,6 +84,19 @@ def load_cutoffs(lineage):
 
 
 def check_lineage(lineage):
+    """
+    Verify that the BUSCO lineage directory contains all required files and directories.
+
+    Parameters
+    ----------
+    lineage : str
+        Path to the BUSCO lineage directory
+
+    Returns
+    -------
+    tuple
+        (bool, str) - Boolean indicating if the lineage is valid, and an error message if not
+    """
     lineage = os.path.abspath(lineage)
     if not os.path.isdir(lineage):
         return False, "{} is not a directory".format(lineage)

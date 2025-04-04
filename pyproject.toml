@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "buscolite"
-version = "24.11.03"
+version = "25.4.3"
 description = "busco analysis for gene predictions"
 readme = {file = "README.md", content-type = "text/markdown"}
 authors = [
@@ -15,6 +15,7 @@ dependencies = [
     "natsort",
     "pyhmmer>=0.10.15",
     "pyfastx>=2.0.0",
+    "packaging",
 ]
 license = {file = "LICENSE.md"}
 classifiers = [
@@ -25,11 +26,11 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
-keywords = ["bioinformatics", "genome", "annotation", "completeness"]
+keywords = ["bioinformatics", "genome", "annotation", "completeness", "BUSCO"]
 
 [project.urls]
 Homepage = "https://github.com/nextgenusfs/buscolite"
-Repository = "https://github.com/nextgenusfs/buscolitegit"
+Repository = "https://github.com/nextgenusfs/buscolite.git"
 
 [project.scripts]
 buscolite = "buscolite.__main__:main"

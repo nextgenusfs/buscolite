@@ -1,0 +1,16 @@
+#                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+# target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+#------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+EOG09260ABY_0        -           1084 EOG09260ABY          -            938         0 1488.9  44.1   1   3    2e-108    2e-108  349.7   8.6     1   240    15   270    15   277 0.93 -
+EOG09260ABY_0        -           1084 EOG09260ABY          -            938         0 1488.9  44.1   2   3   7.3e-37   7.3e-37  112.9   1.1   226   329   283   391   270   397 0.91 -
+EOG09260ABY_0        -           1084 EOG09260ABY          -            938         0 1488.9  44.1   3   3         0         0 1037.0  19.8   325   938   411  1084   405  1084 0.94 -
+#
+# Program:         hmmsearch
+# Version:         3.3.2 (Nov 2020)
+# Pipeline mode:   SEARCH
+# Query file:      dikarya/hmms/EOG09260ABY.hmm
+# Target file:     test-buscolite/proteins/EOG09260ABY.fa
+# Option settings: hmmsearch --domtblout test.out dikarya/hmms/EOG09260ABY.hmm test-buscolite/proteins/EOG09260ABY.fa 
+# Current dir:     /Users/jon/software/buscolite/tests
+# Date:            Mon Jul  4 16:45:42 2022
+# [ok]
