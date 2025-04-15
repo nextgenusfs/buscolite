@@ -6,7 +6,7 @@ import io
 
 import pytest  # noqa: F401 - Needed for pytest fixtures
 
-from buscolite.gff import (  # longest_orf,  # Imported in test functions where needed; validate_and_translate_models,  # Imported in test functions where needed
+from buscolite.gff import (  # longest_orf and validate_and_translate_models are imported in test functions where needed
     gffwriter,
     miniprot_gff_parser,
     softwrap,
