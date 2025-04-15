@@ -1,9 +1,12 @@
-import subprocess
-import signal
-import sys
-import os
 import errno
+import os
+
+# import signal  # Used in open_pipe function
+import subprocess
+import sys
+
 from natsort import natsorted
+
 from .__init__ import __version__
 
 
@@ -22,9 +25,7 @@ def summary_writer(result, missing, cmd, cfg, handle, mode="genome"):
     handle.write("# To reproduce this run: {}\n".format(" ".join(cmd)))
     handle.write("#\n")
     if mode == "genome":
-        handle.write(
-            "# Busco id\tStatus\tContig\tStart\tEnd\tHMM_score\tLength\tminiprot_score\n"
-        )
+        handle.write("# Busco id\tStatus\tContig\tStart\tEnd\tHMM_score\tLength\tminiprot_score\n")
         for k, v in natsorted(result.items()):
             if "_" in k:
                 busco = k.rsplit("_", 1)[0]
@@ -84,9 +85,7 @@ def summary_writer(result, missing, cmd, cfg, handle, mode="genome"):
 
 def overlap(start1, end1, start2, end2):
     """how much does the range (start1, end1) overlap with (start2, end2)"""
-    return max(
-        max((end2 - start1), 0) - max((end2 - end1), 0) - max((start2 - start1), 0), 0
-    )
+    return max(max((end2 - start1), 0) - max((end2 - end1), 0) - max((start2 - start1), 0), 0)
 
 
 def any_overlap(query, lcoords):
@@ -100,19 +99,13 @@ def any_overlap(query, lcoords):
 
 def runprocess(cmd, stdout=False, stderr=False, cwd=".", debug=False):
     if not stdout and not stderr:
-        proc = subprocess.Popen(
-            cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     elif stdout and not stderr:
         with open(stdout, "w") as outfile:
-            proc = subprocess.Popen(
-                cmd, cwd=cwd, stdout=outfile, stderr=subprocess.PIPE
-            )
+            proc = subprocess.Popen(cmd, cwd=cwd, stdout=outfile, stderr=subprocess.PIPE)
     elif not stdout and stderr:
         with open(stderr, "w") as outfile:
-            proc = subprocess.Popen(
-                cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=outfile
-            )
+            proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=outfile)
     elif stdout and stderr:
         if stdout == stderr:
             with open(stdout, "w") as outfile:
@@ -120,9 +113,7 @@ def runprocess(cmd, stdout=False, stderr=False, cwd=".", debug=False):
         else:
             with open(stdout, "w") as outfile1:
                 with open(stderr, "w") as outfile2:
-                    proc = subprocess.Popen(
-                        cmd, cwd=cwd, stdout=outfile1, stderr=outfile2
-                    )
+                    proc = subprocess.Popen(cmd, cwd=cwd, stdout=outfile1, stderr=outfile2)
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
         sys.stderr.write("CMD ERROR: {}".format(" ".join(cmd)))
@@ -140,9 +131,7 @@ def runprocess(cmd, stdout=False, stderr=False, cwd=".", debug=False):
 
 def execute(cmd):
     DEVNULL = open(os.devnull, "w")
-    popen = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL
-    )
+    popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL)
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line
     popen.stdout.close()
@@ -155,9 +144,7 @@ def execute_timeout(cmd, timeout=120):
     # stream execute but add a timeout
     DEVNULL = open(os.devnull, "w")
     try:
-        p = subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL
-        )
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL)
         return_code = p.wait(timeout=timeout)
         if return_code:
             raise subprocess.CalledProcessError(return_code, cmd)
@@ -188,7 +175,7 @@ def which2(program):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-    fpath, fname = os.path.split(program)
+    fpath, _ = os.path.split(program)  # fname is not used
     if fpath:
         if is_exe(program):
             return program
@@ -202,8 +189,9 @@ def which2(program):
 
 
 def open_pipe(command, mode="r", buff=1024 * 1024):
-    import subprocess
-    import signal
+    import signal  # Import signal locally where it's used
+
+    # import subprocess  # Already imported at the module level
 
     if "r" in mode:
         return subprocess.Popen(
@@ -284,7 +272,9 @@ def open_gz(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
 WHICH_XZ = which2("xz")
 
 
-def open_xz(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
+def open_xz(
+    filename, mode="r", buff=1024 * 1024, external=PARALLEL
+):  # external is kept for API compatibility
     if WHICH_XZ:
         if "r" in mode:
             return open_pipe("xz -dc " + filename, mode, buff)
@@ -313,4 +303,5 @@ def zopen(filename, mode="r", buff=1024 * 1024, external=PARALLEL):
         return open_xz(filename, mode, buff, external)
     else:
         return open(filename, mode, buff)
-    return None
+    # This line is unreachable, but kept for consistency with other functions
+    # return None

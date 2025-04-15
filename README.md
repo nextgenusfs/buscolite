@@ -32,3 +32,26 @@ To install the most updated code in master you can run:
 ```
 python -m pip install git+https://github.com/nextgenusfs/buscolite.git
 ```
+
+## Development
+
+If you want to contribute to the development of BUSCOlite, follow these steps:
+
+1. Clone the repository:
+   ```
+   git clone https://github.com/nextgenusfs/buscolite.git
+   cd buscolite
+   ```
+
+2. Set up the development environment:
+   ```
+   ./scripts/setup_dev.sh
+   ```
+   This will install the development dependencies and set up pre-commit hooks.
+
+3. Make your changes and commit them. The pre-commit hooks will automatically check and format your code.
+
+4. Run the tests to make sure everything is working:
+   ```
+   pytest
+   ```

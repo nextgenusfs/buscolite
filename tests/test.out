@@ -10,7 +10,7 @@ EOG09260ABY_0        -           1084 EOG09260ABY          -            938     
 # Pipeline mode:   SEARCH
 # Query file:      dikarya/hmms/EOG09260ABY.hmm
 # Target file:     test-buscolite/proteins/EOG09260ABY.fa
-# Option settings: hmmsearch --domtblout test.out dikarya/hmms/EOG09260ABY.hmm test-buscolite/proteins/EOG09260ABY.fa 
+# Option settings: hmmsearch --domtblout test.out dikarya/hmms/EOG09260ABY.hmm test-buscolite/proteins/EOG09260ABY.fa
 # Current dir:     /Users/jon/software/buscolite/tests
 # Date:            Mon Jul  4 16:45:42 2022
 # [ok]

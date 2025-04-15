@@ -1,6 +1,7 @@
-import sys
 import os
 import subprocess
+import sys
+
 from .utilities import execute_timeout
 
 

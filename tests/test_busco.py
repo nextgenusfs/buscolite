@@ -3,8 +3,10 @@ Tests for the busco module.
 """
 
 import os
-import pytest
-from buscolite.busco import load_config, load_cutoffs, check_lineage
+
+from buscolite.busco import check_lineage, load_config, load_cutoffs
+
+# import pytest  # Not used directly, but needed for pytest fixtures
 
 
 def test_load_config(mock_busco_lineage):
@@ -56,8 +58,8 @@ def test_check_lineage_invalid_dir(temp_dir):
 def test_check_lineage_missing_dir(mock_busco_lineage):
     """Test checking a lineage with a missing directory."""
     # Create a new lineage directory without the hmms directory
-    import tempfile
     import shutil
+    import tempfile
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Copy everything except hmms directory
@@ -72,9 +74,7 @@ def test_check_lineage_missing_dir(mock_busco_lineage):
             "ancestral",
             "ancestral_variants",
         ]:
-            shutil.copy(
-                os.path.join(mock_busco_lineage, f), os.path.join(new_lineage, f)
-            )
+            shutil.copy(os.path.join(mock_busco_lineage, f), os.path.join(new_lineage, f))
 
         # Create prfl directory
         os.makedirs(os.path.join(new_lineage, "prfl"))

@@ -1,14 +1,16 @@
-import subprocess
-import uuid
+# import importlib.metadata  # Unused import
 import os
 import shutil
-import pyhmmer
-import importlib.metadata
-from packaging.version import parse as parse_version
-from .utilities import runprocess, execute
-from .fastx import fasta2headers, fasta2dict
-from .gff import validate_models
+import subprocess
+import uuid
 from urllib.parse import unquote
+
+import pyhmmer
+from packaging.version import parse as parse_version
+
+from .fastx import fasta2dict, fasta2headers
+from .gff import validate_models
+from .utilities import execute, runprocess
 
 
 def tblastn_version():
@@ -123,12 +125,12 @@ def miniprot_prefilter(
                 pend,
                 strand,
                 cname,
-                clen,
+                _,  # clen (not used)
                 cstart,
                 cend,
-                match,
-                naln,
-                mapq,
+                _,  # match (not used)
+                _,  # naln (not used)
+                _,  # mapq (not used)
             ) = line.split("\t")[1:13]
             score = 0
             escore = 0.0
@@ -136,12 +138,12 @@ def miniprot_prefilter(
                 if x.startswith("AS:"):
                     score = int(x.split(":")[-1])
             qcov = (int(pend) - int(pstart)) / float(int(plen))
-            if not cname in headers:
+            if cname not in headers:
                 if cname.startswith("gb|"):
                     cname = cname.replace("gb|", "").rstrip("|")
-            if not pname in results:
+            if pname not in results:
                 results[pname] = {cname: []}
-            if not cname in results[pname]:
+            if cname not in results[pname]:
                 results[pname][cname] = [
                     {
                         "evalue": escore,
@@ -197,15 +199,16 @@ def miniprot_prefilter(
             ID = None
             Parent = None
             Name = None
-            Product = None
-            GeneFeature = None
-            gbkey = None
+            # These variables are not used but kept for future compatibility
+            # Product = None
+            # GeneFeature = None
+            # gbkey = None
             info = {}
             for field in attributes.split(";"):
                 try:
                     k, v = field.split("=", 1)
                     info[k] = v.strip()
-                except (IndexError, ValueError) as E:
+                except (IndexError, ValueError):
                     pass
             # now can lookup in info dict for values
             ID = info.get("ID", None)
@@ -219,7 +222,7 @@ def miniprot_prefilter(
             # now we can do add to dictionary these parsed values
             # genbank gff files are incorrect for tRNA so check if gbkey exists and make up gene on the fly
             if feature in ["mRNA"]:
-                if not ID in Genes:
+                if ID not in Genes:
                     Genes[ID] = {
                         "name": Name,
                         "type": ["mRNA"],
@@ -301,11 +304,7 @@ def miniprot_prefilter(
     g = {}
     for k, v in annotation.items():
         if "mRNA" in v["type"]:
-            if (
-                False in v["partialStart"]
-                and False in v["partialStop"]
-                and v["pseudo"] == False
-            ):
+            if False in v["partialStart"] and False in v["partialStop"] and not v["pseudo"]:
                 # check complete models with hmmmer to validate and reformat
                 hmmfile = os.path.join(buscodb, "hmms", "{}.hmm".format(v["name"]))
                 # now we can check via hmmer
@@ -322,9 +321,7 @@ def miniprot_prefilter(
                             "translation": v["protein"][0],
                             "status": "complete",
                             "hmmer": hmm_result[0],
-                            "miniprot_score": results[v["name"]][v["contig"]][0][
-                                "score"
-                            ],
+                            "miniprot_score": results[v["name"]][v["contig"]][0]["score"],
                         }
                         if not v["name"] in g:
                             g[v["name"]] = [final]
@@ -334,12 +331,12 @@ def miniprot_prefilter(
     final = {}
     njobs = 0
     for k, v in sorted(results.items()):
-        if not k in g:
+        if k not in g:
             for x, z in sorted(v.items()):
                 merged = merge_overlapping_hits(z, fluff=maxintron)
                 for w in merged:
                     njobs += 1
-                    if not k in final:
+                    if k not in final:
                         final[k] = [
                             {
                                 "contig": x,
@@ -363,7 +360,15 @@ def miniprot_prefilter(
 
 
 def blast_prefilter(
-    input, query, logger, tmpdir=False, evalue=1e-3, cpus=1, maxhits=3, maxintron=10000
+    input,
+    query,
+    logger=None,
+    tmpdir=False,
+    evalue=1e-3,
+    cpus=1,
+    maxhits=3,
+    maxintron=10000,
+    # logger parameter is kept for API compatibility but not used
 ):
     """
     Prefilters alignments for augustus using tblastn.
@@ -394,11 +399,7 @@ def blast_prefilter(
     """
     # figure out cpus
     if cpus > 1:  # need to see if tblastn is safe multithreading
-        if (
-            parse_version("2.2.32")
-            < parse_version(tblastn_version())
-            < parse_version("2.10.2")
-        ):
+        if parse_version("2.2.32") < parse_version(tblastn_version()) < parse_version("2.10.2"):
             cpus = 1
     # setup tmpdir
     if not tmpdir:
@@ -461,7 +462,7 @@ def blast_prefilter(
         score = float(cols[11])
         escore = float(cols[10])
         contig = cols[0]
-        if not contig in headers:
+        if contig not in headers:
             if contig.startswith("gb|"):
                 contig = contig.replace("gb|", "").rstrip("|")
         if int(cols[3]) > int(cols[2]):
@@ -470,9 +471,9 @@ def blast_prefilter(
         else:
             start = int(cols[3])
             end = int(cols[2])
-        if not cols[4] in results:
+        if cols[4] not in results:
             results[cols[4]] = {contig: []}
-        if not contig in results[cols[4]]:
+        if contig not in results[cols[4]]:
             results[cols[4]][contig] = [
                 {
                     "evalue": escore,
@@ -506,7 +507,7 @@ def blast_prefilter(
             merged = merge_overlapping_hits(z, fluff=maxintron)
             for w in merged:
                 njobs += 1
-                if not k in final:
+                if k not in final:
                     final[k] = [
                         {
                             "contig": x,

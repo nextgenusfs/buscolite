@@ -3,21 +3,24 @@ Tests for the fasta module.
 """
 
 import os
-import pytest
-import tempfile
-import shutil
+
+import pytest  # Needed for pytest.raises
+
 from buscolite.fasta import (
     RevComp,
-    translate,
-    fastaparser,
+    dict2stats,
+    explode_fasta,
     fasta2dict,
     fasta2headers,
     fasta2lengths,
-    explode_fasta,
+    fastaparser,
     getSeqRegions,
-    dict2stats,
     softwrap,
+    translate,
 )
+
+# import shutil  # Used in test_explode_fasta but imported in the test function
+# import tempfile  # Used in test_explode_fasta but imported in the test function
 
 
 def test_revcomp():

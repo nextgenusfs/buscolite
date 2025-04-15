@@ -1,26 +1,21 @@
+import concurrent.futures
 import os
 import tempfile
-import concurrent.futures
-from natsort import natsorted
-import pyhmmer
+
 import pyfastx
+import pyhmmer
+from natsort import natsorted
+
 from .__init__ import __version__
+from .augustus import augustus_functional, augustus_version, proteinprofile
+from .fastx import dict2stats, fasta2dict, fasta2lengths, getSeqRegions, softwrap, translate
 from .log import startLogging
 from .search import (
-    hmmer_search_single,
     hmmer_search,
+    hmmer_search_single,
     miniprot_prefilter,
     miniprot_version,
     pyhmmer_version,
-)
-from .augustus import proteinprofile, augustus_version, augustus_functional
-from .fastx import (
-    softwrap,
-    getSeqRegions,
-    translate,
-    fasta2dict,
-    fasta2lengths,
-    dict2stats,
 )
 from .utilities import any_overlap
 
@@ -261,11 +256,7 @@ def runbusco(
                 )
                 raise SystemExit(1)
         if verbosity >= 1:
-            logger.info(
-                "{} lineage contains {} BUSCO models".format(
-                    Config["name"], len(CutOffs)
-                )
-            )
+            logger.info("{} lineage contains {} BUSCO models".format(Config["name"], len(CutOffs)))
 
         # load genome into dictionary
         seq_records = fasta2dict(input)
@@ -280,9 +271,7 @@ def runbusco(
         # run miniprot filter from ancesteral proteins
         query = os.path.join(lineage, "ancestral")
         if verbosity >= 1:
-            logger.info(
-                "Prefiltering predictions using miniprot of ancestral sequences"
-            )
+            logger.info("Prefiltering predictions using miniprot of ancestral sequences")
         complete, coords, njobs = miniprot_prefilter(
             input, query, CutOffs, cpus=cpus, buscodb=lineage
         )
@@ -353,9 +342,7 @@ def runbusco(
                 )
             )
         filt_variants = tempfile.NamedTemporaryFile(suffix=".fasta")
-        avariants = fasta2dict(
-            os.path.join(lineage, "ancestral_variants"), full_header=True
-        )
+        avariants = fasta2dict(os.path.join(lineage, "ancestral_variants"), full_header=True)
         seen = set()
         with open(filt_variants.name, "w") as outfile:
             for title, seq in avariants.items():
@@ -370,11 +357,7 @@ def runbusco(
                     seen.add(z)
                     outfile.write(">{} {}\n{}\n".format(z, num, softwrap(seq)))
         if verbosity >= 2:
-            logger.info(
-                "Trying to use ancestral variants to recover {} BUSCOs".format(
-                    len(seen)
-                )
-            )
+            logger.info("Trying to use ancestral variants to recover {} BUSCOs".format(len(seen)))
         complete2, coords2, njobs2 = miniprot_prefilter(
             input, filt_variants.name, CutOffs, cpus=cpus, buscodb=lineage
         )
@@ -456,9 +439,7 @@ def runbusco(
         }
         for k, v in natsorted(b_results.items()):
             stats["total"] += 1
-            if (
-                len(v) > 1
-            ):  # duplicate processing here, overlapping regions are not duplicates
+            if len(v) > 1:  # duplicate processing here, overlapping regions are not duplicates
                 dp = []
                 for i, x in enumerate(
                     sorted(v, key=lambda y: y["hmmer"]["bitscore"], reverse=True)
@@ -467,12 +448,8 @@ def runbusco(
                     if i == 0:
                         dp.append(x)
                     else:
-                        if x["contig"] in [
-                            a["contig"] for a in dp
-                        ]:  # means contig already there
-                            if not any_overlap(
-                                x["location"], [a["location"] for a in dp]
-                            ):
+                        if x["contig"] in [a["contig"] for a in dp]:  # means contig already there
+                            if not any_overlap(x["location"], [a["location"] for a in dp]):
                                 dp.append(x)
                 # these are actually duplicated
                 if len(dp) > 1:
@@ -500,27 +477,17 @@ def runbusco(
 
     elif mode == "proteins":
         if verbosity >= 2:
-            logger.info(
-                "BUSCOlite v{}; pyhmmer v{}".format(__version__, pyhmmer.__version__)
-            )
+            logger.info("BUSCOlite v{}; pyhmmer v{}".format(__version__, pyhmmer.__version__))
         if verbosity >= 1:
-            logger.info(
-                "{} lineage contains {} BUSCO models".format(
-                    Config["name"], len(CutOffs)
-                )
-            )
+            logger.info("{} lineage contains {} BUSCO models".format(Config["name"], len(CutOffs)))
         # load proteome into easel digitized sequence to pass to pyhmmer
         falengths = fasta2lengths(input)
         alphabet = pyhmmer.easel.Alphabet.amino()
         sequences = []
-        with pyhmmer.easel.SequenceFile(
-            input, digital=True, alphabet=alphabet
-        ) as seq_file:
+        with pyhmmer.easel.SequenceFile(input, digital=True, alphabet=alphabet) as seq_file:
             sequences = list(seq_file)
         if verbosity >= 1:
-            logger.info(
-                "Loaded {} protein sequences from {}".format(len(sequences), input)
-            )
+            logger.info("Loaded {} protein sequences from {}".format(len(sequences), input))
         # now we can loop over the hmms in the lineage and run hmmer on each
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 2) as executor:
@@ -552,9 +519,7 @@ def runbusco(
         }
         for k, v in natsorted(b_results.items()):
             if len(v) > 1:  # duplicates
-                for i, x in enumerate(
-                    sorted(v, key=lambda y: y["bitscore"], reverse=True)
-                ):
+                for i, x in enumerate(sorted(v, key=lambda y: y["bitscore"], reverse=True)):
                     x["status"] = "duplicated"
                     x["length"] = falengths[x["hit"]]
                     if i > 0:

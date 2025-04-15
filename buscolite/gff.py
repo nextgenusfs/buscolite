@@ -1,10 +1,12 @@
-from urllib.parse import unquote
-from collections import OrderedDict
+import concurrent.futures
 import re
 import sys
-import concurrent.futures
+from collections import OrderedDict
+from urllib.parse import unquote
+
 from natsort import natsorted
-from .fastx import translate, codon_table, getSeqRegions, RevComp
+
+from .fastx import RevComp, codon_table, getSeqRegions, translate
 
 
 def gffwriter(result, handle):
@@ -12,6 +14,7 @@ def gffwriter(result, handle):
     for k, v in result.items():
         if v["status"] != "missing":
             cleaned[k] = v
+
     # sort results by contig and location
     def _sortDict(d):
         return (d[1]["contig"], d[1]["location"][0])
@@ -21,13 +24,11 @@ def gffwriter(result, handle):
     # write GFF3 output from runbusco dictionary result
     handle.write("##gff-version 3\n")
     for k, v in sortedGenes.items():
-        extraAnnots = (
-            "Note=status={},hmmer_score={},hmmer_evalue={},miniprot_score={},".format(
-                v["status"],
-                round(v["hmmer"]["bitscore"], 2),
-                round(v["hmmer"]["evalue"], 2),
-                v["miniprot_score"],
-            )
+        extraAnnots = "Note=status={},hmmer_score={},hmmer_evalue={},miniprot_score={},".format(
+            v["status"],
+            round(v["hmmer"]["bitscore"], 2),
+            round(v["hmmer"]["evalue"], 2),
+            v["miniprot_score"],
         )
 
         handle.write(
@@ -91,9 +92,7 @@ def gffwriter(result, handle):
                     k,
                 )
             )
-            current_phase = (
-                current_phase - (int(sortedCDS[y][1]) - int(sortedCDS[y][0]) + 1)
-            ) % 3
+            current_phase = (current_phase - (int(sortedCDS[y][1]) - int(sortedCDS[y][0]) + 1)) % 3
             if current_phase == 3:
                 current_phase = 0
 
@@ -130,15 +129,16 @@ def miniprot_gff_parser(line, Genes):
     ID = None
     Parent = None
     Name = None
-    Product = None
-    GeneFeature = None
-    gbkey = None
+    # These variables are not used but kept for future compatibility
+    # Product = None
+    # GeneFeature = None
+    # gbkey = None
     info = {}
     for field in attributes.split(";"):
         try:
             k, v = field.split("=", 1)
             info[k] = v.strip()
-        except (IndexError, ValueError) as E:
+        except (IndexError, ValueError):
             pass
     # now can lookup in info dict for values
     ID = info.get("ID", None)
@@ -152,7 +152,7 @@ def miniprot_gff_parser(line, Genes):
     # now we can do add to dictionary these parsed values
     # genbank gff files are incorrect for tRNA so check if gbkey exists and make up gene on the fly
     if feature in ["mRNA"]:
-        if not ID in Genes:
+        if ID not in Genes:
             Genes[ID] = {
                 "name": Name,
                 "type": ["mRNA"],
@@ -230,9 +230,7 @@ def miniprot_gff_parser(line, Genes):
     return Genes
 
 
-def validate_models(
-    annotation, fadict, logger=sys.stderr.write, table=1, gap_filter=False
-):
+def validate_models(annotation, fadict, logger=sys.stderr.write, table=1, gap_filter=False):
     # loop through and make sure CDS and exons are properly sorted and codon_start is correct, translate to protein space
     # try to use multithreading here, not sure its necessary but new syntax for me with concurrent
     results = []
@@ -271,9 +269,7 @@ def validate_models(
             "product",
         ]:
             if len(annotation[gene]["ids"]) != len(annotation[gene][z]):
-                assert_lengths_fail.append(
-                    (z, annotation[gene][z], len(annotation[gene][z]))
-                )
+                assert_lengths_fail.append((z, annotation[gene][z], len(annotation[gene][z])))
         if len(assert_lengths_fail) > 0:
             logger(
                 "ERROR in parsing gene {}\n{}\n{}\n".format(
@@ -327,13 +323,9 @@ def validate_and_translate_models(
                 if v["strand"] == "+":
                     sortedCDS = sorted(v["CDS"][i], key=lambda tup: tup[0])
                 else:
-                    sortedCDS = sorted(
-                        v["CDS"][i], key=lambda tup: tup[0], reverse=True
-                    )
+                    sortedCDS = sorted(v["CDS"][i], key=lambda tup: tup[0], reverse=True)
                 # get the codon_start by getting first CDS phase + 1
-                indexStart = [
-                    x for x, y in enumerate(v["CDS"][i]) if y[0] == sortedCDS[0][0]
-                ]
+                indexStart = [x for x, y in enumerate(v["CDS"][i]) if y[0] == sortedCDS[0][0]]
                 cdsSeq = getSeqRegions(SeqRecords, v["contig"], sortedCDS)
                 protSeq, codon_start = (None,) * 2
                 if (
@@ -356,9 +348,7 @@ def validate_and_translate_models(
                     except IndexError:
                         pass
                     # translate and get protein sequence
-                    protSeq = translate(
-                        cdsSeq, v["strand"], codon_start - 1, table=table
-                    )
+                    protSeq = translate(cdsSeq, v["strand"], codon_start - 1, table=table)
                 results["codon_start"].append(codon_start)
                 if codon_start > 1:
                     if v["strand"] == "+":
@@ -433,9 +423,7 @@ def longest_orf(annot, fadict, minlen=50, table=1):
             searchSeq = mrnaSeq.upper()
         # get all possible ORFs from the mRNA sequence
         valid_starts = "|".join(codon_table[table]["start"])
-        allORFS = re.findall(
-            rf"((?:{valid_starts})(?:\S{{3}})*?T(?:AG|AA|GA))", searchSeq
-        )
+        allORFS = re.findall(rf"((?:{valid_starts})(?:\S{{3}})*?T(?:AG|AA|GA))", searchSeq)
         longestORF = None
         # if you found ORFs, then we'll get the longest one and see if meets criterea
         if len(allORFS) > 0:

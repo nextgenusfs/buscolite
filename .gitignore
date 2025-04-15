@@ -3,4 +3,5 @@ build/*
 local_tests/*
 docs/*
 buscolite/__pycache*
+tests/__pycache*
 .DS_Store

@@ -2,9 +2,10 @@
 Tests for the log module.
 """
 
-import os
 import logging
+import os
 import tempfile
+
 from buscolite.log import startLogging
 
 

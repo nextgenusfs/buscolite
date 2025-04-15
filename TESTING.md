@@ -18,11 +18,11 @@ The BUSCOlite project uses pytest for testing. The tests are organized as follow
 To run the tests, you need to install pytest and the package in development mode:
 
 ```bash
-# Install pytest and coverage tools
-pip install pytest pytest-cov
+# Set up the development environment (installs pytest, pre-commit, and other tools)
+./scripts/setup_dev.sh
 
-# Install buscolite in development mode
-pip install -e .
+# Or manually install the development dependencies
+pip install -e ".[dev]"
 
 # Run all tests
 pytest
@@ -95,6 +95,26 @@ The GitHub Actions workflow does the following:
 
 You can see the status of the tests on the [GitHub Actions page](https://github.com/nextgenusfs/buscolite/actions) and the coverage report on the [Codecov page](https://codecov.io/gh/nextgenusfs/buscolite).
 
+## Code Formatting and Linting
+
+The project uses pre-commit hooks to enforce code formatting and linting standards. The following tools are used:
+
+- **black**: For code formatting with a line length of 100 characters
+- **isort**: For sorting imports
+- **flake8**: For linting
+
+To run the formatting and linting checks manually:
+
+```bash
+# Run all pre-commit hooks
+pre-commit run --all-files
+
+# Run specific hooks
+pre-commit run black --all-files
+pre-commit run isort --all-files
+pre-commit run flake8 --all-files
+```
+
 ## Adding New Tests
 
 When adding new features or fixing bugs, please also add tests to ensure the code works correctly. Follow these guidelines:
@@ -104,6 +124,7 @@ When adding new features or fixing bugs, please also add tests to ensure the cod
 3. Make sure the test function has a descriptive name and docstring.
 4. Use pytest fixtures to set up test data and clean up after tests.
 5. Use pytest.mark.skipif to skip tests that require external dependencies that might not be installed.
+6. Make sure your code passes all pre-commit checks before submitting a pull request.
 
 ## Running Tests with Specific Python Versions
 

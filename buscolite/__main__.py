@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
-import sys
-import os
 import argparse
 import json
+import os
+import sys
+
 from .__init__ import __version__
-from .help_formatter import MyParser, MyHelpFormatter
 from .busco import runbusco
-from .utilities import summary_writer
 from .gff import gffwriter
+from .help_formatter import MyHelpFormatter, MyParser
 from .log import startLogging
+from .utilities import summary_writer
 
 
 def main():
@@ -62,9 +63,7 @@ def main():
         outfile.write(json.dumps(d, indent=2))
     if args.mode == "genome":
         logger.info(
-            "Ouput files written:\n GFF3={}\n Summary={}\n Raw={}".format(
-                gff, summary, raw
-            )
+            "Ouput files written:\n GFF3={}\n Summary={}\n Raw={}".format(gff, summary, raw)
         )
     else:
         logger.info("Ouput files written:\n Summary={}\n Raw={}".format(summary, raw))
@@ -85,9 +84,7 @@ def parse_args(args):
         Parsed command-line arguments
     """
     description = "BUSCOlite: simplified BUSCO analysis for genome annotation"
-    parser = MyParser(
-        description=description, formatter_class=MyHelpFormatter, add_help=False
-    )
+    parser = MyParser(description=description, formatter_class=MyHelpFormatter, add_help=False)
     required = parser.add_argument_group("Required arguments")
     optional = parser.add_argument_group("Optional arguments")
 

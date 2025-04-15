@@ -16,18 +16,17 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install pytest pytest-cov
-        python -m pip install -e .
-        
+        python -m pip install -e ".[dev]"
+
     - name: Install external dependencies
       run: |
         # Install miniprot
@@ -35,18 +34,18 @@ jobs:
         sudo apt-get install -y build-essential zlib1g-dev
         git clone https://github.com/lh3/miniprot.git
         cd miniprot && make && sudo cp miniprot /usr/local/bin/
-        
+
         # Install pyhmmer
         python -m pip install pyhmmer
-        
+
     - name: Run unit tests
       run: |
         pytest tests/test_*.py -v --cov=buscolite --cov-report=xml
-        
+
     - name: Run integration tests without external dependencies
       run: |
         pytest tests/integration/test_buscolite_cli.py tests/integration/test_buscolite_api.py -v
-        
+
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -57,24 +56,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.10"
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install flake8 black
-        
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-        
-    - name: Check formatting with black
-      run: |
-        black --check --diff buscolite tests
+        python -m pip install -e ".[dev]"
+
+    - name: Run pre-commit
+      uses: pre-commit/action@v3.0.0

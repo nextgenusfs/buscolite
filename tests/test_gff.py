@@ -2,17 +2,18 @@
 Tests for the gff module.
 """
 
-import os
 import io
-import pytest
-from buscolite.gff import (
+
+from buscolite.gff import (  # longest_orf,  # Imported in test functions where needed; validate_and_translate_models,  # Imported in test functions where needed
     gffwriter,
     miniprot_gff_parser,
-    validate_models,
-    validate_and_translate_models,
     softwrap,
-    longest_orf,
+    validate_models,
 )
+
+# import os  # Not used directly in this file
+
+# import pytest  # Not used directly, but needed for pytest fixtures
 
 
 def test_gffwriter():
@@ -127,7 +128,7 @@ def test_miniprot_gff_parser():
 def test_validate_models():
     """Test the validate_models function with a mock implementation."""
     # Create a simple mock implementation of validate_models that just returns the input
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import patch  # MagicMock not used directly
 
     # Create a mock Genes dictionary with all required keys
     Genes = {
@@ -159,7 +160,7 @@ def test_validate_models():
     }
 
     # Mock the logger
-    def mock_logger(message):
+    def mock_logger(_):
         pass
 
     # Mock the concurrent.futures.ThreadPoolExecutor to avoid threading issues
@@ -171,7 +172,7 @@ def test_validate_models():
         )
 
         # Call the function with our mocks
-        result = validate_models(Genes, SeqRecords, logger=mock_logger)
+        _ = validate_models(Genes, SeqRecords, logger=mock_logger)  # Result not used
 
         # Check that the function was called with the right arguments
         assert mock_executor.return_value.__enter__.return_value.submit.called
@@ -182,9 +183,10 @@ def test_validate_models():
 
 def test_validate_and_translate_models():
     """Test the validate_and_translate_models function."""
+    # import sys  # Not used
+
+    # from buscolite.fastx import getSeqRegions  # Not used directly
     from buscolite.gff import validate_and_translate_models
-    from buscolite.fastx import getSeqRegions
-    import sys
 
     # Create a mock gene entry
     gene_id = "gene1"
@@ -216,7 +218,7 @@ def test_validate_and_translate_models():
     }
 
     # Mock the logger
-    def mock_logger(message):
+    def mock_logger(_):
         pass
 
     # Call the function
@@ -246,9 +248,10 @@ def test_validate_and_translate_models():
 
 def test_validate_and_translate_models_negative_strand():
     """Test the validate_and_translate_models function with negative strand."""
+    # import sys  # Not used
+
+    # from buscolite.fastx import getSeqRegions  # Not used directly
     from buscolite.gff import validate_and_translate_models
-    from buscolite.fastx import getSeqRegions
-    import sys
 
     # Create a mock gene entry on the negative strand
     gene_id = "gene1"
@@ -281,7 +284,7 @@ def test_validate_and_translate_models_negative_strand():
     }
 
     # Mock the logger
-    def mock_logger(message):
+    def mock_logger(_):
         pass
 
     # Call the function
@@ -311,9 +314,10 @@ def test_validate_and_translate_models_negative_strand():
 
 def test_validate_and_translate_models_unknown_phase():
     """Test the validate_and_translate_models function with unknown phase."""
+    # import sys  # Not used
+
+    # from buscolite.fastx import getSeqRegions  # Not used directly
     from buscolite.gff import validate_and_translate_models
-    from buscolite.fastx import getSeqRegions
-    import sys
 
     # Create a mock gene entry with unknown phase
     gene_id = "gene1"
@@ -345,7 +349,7 @@ def test_validate_and_translate_models_unknown_phase():
     }
 
     # Mock the logger
-    def mock_logger(message):
+    def mock_logger(_):
         pass
 
     # Call the function
@@ -394,8 +398,8 @@ def test_softwrap():
 
 def test_longest_orf():
     """Test the longest_orf function."""
+    # from buscolite.fastx import getSeqRegions  # Not used directly
     from buscolite.gff import longest_orf
-    from buscolite.fastx import getSeqRegions
 
     # Create a mock annotation dictionary
     annot = {
@@ -429,8 +433,8 @@ def test_longest_orf():
 
 def test_longest_orf_negative_strand():
     """Test the longest_orf function with negative strand."""
+    # from buscolite.fastx import getSeqRegions  # Not used directly
     from buscolite.gff import longest_orf
-    from buscolite.fastx import getSeqRegions
 
     # Create a mock annotation dictionary for negative strand
     annot = {
@@ -465,8 +469,8 @@ def test_longest_orf_negative_strand():
 
 def test_longest_orf_no_orf():
     """Test the longest_orf function with no valid ORF."""
+    # from buscolite.fastx import getSeqRegions  # Not used directly
     from buscolite.gff import longest_orf
-    from buscolite.fastx import getSeqRegions
 
     # Create a mock annotation dictionary
     annot = {
@@ -497,8 +501,8 @@ def test_longest_orf_no_orf():
 
 def test_longest_orf_short_orf():
     """Test the longest_orf function with an ORF shorter than minlen."""
+    # from buscolite.fastx import getSeqRegions  # Not used directly
     from buscolite.gff import longest_orf
-    from buscolite.fastx import getSeqRegions
 
     # Create a mock annotation dictionary
     annot = {
@@ -523,9 +527,7 @@ def test_longest_orf_short_orf():
 
     # Check the results
     assert "gene1" in result
-    assert result["gene1"]["type"] == [
-        "ncRNA"
-    ]  # Should remain as ncRNA because ORF is too short
+    assert result["gene1"]["type"] == ["ncRNA"]  # Should remain as ncRNA because ORF is too short
     assert len(result["gene1"]["CDS"]) == 1  # Should still have a CDS entry
     assert len(result["gene1"]["CDS"][0]) == 0  # CDS should be empty
 

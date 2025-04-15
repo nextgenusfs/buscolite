@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
-from .utilities import zopen
 
+from .utilities import zopen
 
 codon_table = {
     1: {
@@ -344,7 +344,7 @@ def fasta2lengths(fasta, full_header=False):
     return seqs
 
 
-def explode_fasta(fasta, folder, suffix='.fa'):
+def explode_fasta(fasta, folder, suffix=".fa"):
     """Read FASTA file and write 1 contig per file to folder
 
     Parameters
@@ -368,8 +368,8 @@ def explode_fasta(fasta, folder, suffix='.fa'):
             if " " in title:
                 title = title.split(" ", 1)[0]
             seqs[title] = len(seq)
-            with open(os.path.join(folder, '{}{}'.format(title, suffix)), 'w') as outfile:
-                outfile.write('>{}\n{}\n'.format(title, softwrap(seq)))
+            with open(os.path.join(folder, "{}{}".format(title, suffix)), "w") as outfile:
+                outfile.write(">{}\n{}\n".format(title, softwrap(seq)))
 
     return seqs
 
@@ -405,11 +405,11 @@ def getSeqRegions(seqs, header, coordinates):
 
 
 def dict2stats(fadict):
-    stats = {'n': len(fadict)}
+    stats = {"n": len(fadict)}
     total = 0
     for title, seq in fadict.items():
         total += len(seq)
-    stats['size'] = total
+    stats["size"] = total
     return stats
 
 

@@ -2,14 +2,16 @@
 Tests for the search module.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from buscolite.search import (
-    tblastn_version,
+    merge_overlapping_hits,
     miniprot_version,
     pyhmmer_version,
-    merge_overlapping_hits,
+    tblastn_version,
 )
+
+# import pytest  # Not used directly
 
 
 @patch("subprocess.Popen")

@@ -2,17 +2,19 @@
 Tests for the fastx module.
 """
 
-import os
-import pytest
+# import os  # Not used in this file
+
+# import pytest  # Not used directly, but needed for pytest fixtures
+
 from buscolite.fastx import (
     RevComp,
-    translate,
+    dict2stats,
     fasta2dict,
     fasta2headers,
     fasta2lengths,
     getSeqRegions,
-    dict2stats,
     softwrap,
+    translate,
 )
 
 
