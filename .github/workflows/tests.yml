@@ -42,9 +42,10 @@ jobs:
       run: |
         pytest tests/test_*.py -v --cov=buscolite --cov-report=xml
 
-    - name: Run integration tests without external dependencies
-      run: |
-        pytest tests/integration/test_buscolite_cli.py tests/integration/test_buscolite_api.py -v
+    # Integration tests are not yet implemented
+    # - name: Run integration tests without external dependencies
+    #   run: |
+    #     pytest tests/integration/test_buscolite_cli.py tests/integration/test_buscolite_api.py -v
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
