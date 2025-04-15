@@ -4,14 +4,14 @@ Tests for the search module.
 
 from unittest.mock import MagicMock, patch
 
+import pytest  # noqa: F401 - Needed for pytest fixtures
+
 from buscolite.search import (
     merge_overlapping_hits,
     miniprot_version,
     pyhmmer_version,
     tblastn_version,
 )
-
-# import pytest  # Not used directly
 
 
 @patch("subprocess.Popen")

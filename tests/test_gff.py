@@ -4,6 +4,8 @@ Tests for the gff module.
 
 import io
 
+import pytest  # noqa: F401 - Needed for pytest fixtures
+
 from buscolite.gff import (  # longest_orf,  # Imported in test functions where needed; validate_and_translate_models,  # Imported in test functions where needed
     gffwriter,
     miniprot_gff_parser,
@@ -12,8 +14,6 @@ from buscolite.gff import (  # longest_orf,  # Imported in test functions where 
 )
 
 # import os  # Not used directly in this file
-
-# import pytest  # Not used directly, but needed for pytest fixtures
 
 
 def test_gffwriter():

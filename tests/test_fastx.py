@@ -4,7 +4,7 @@ Tests for the fastx module.
 
 # import os  # Not used in this file
 
-# import pytest  # Not used directly, but needed for pytest fixtures
+import pytest  # noqa: F401 - Needed for pytest fixtures
 
 from buscolite.fastx import (
     RevComp,

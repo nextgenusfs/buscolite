@@ -4,9 +4,9 @@ Tests for the busco module.
 
 import os
 
-from buscolite.busco import check_lineage, load_config, load_cutoffs
+import pytest  # noqa: F401 - Needed for pytest fixtures
 
-# import pytest  # Not used directly, but needed for pytest fixtures
+from buscolite.busco import check_lineage, load_config, load_cutoffs
 
 
 def test_load_config(mock_busco_lineage):

@@ -5,9 +5,9 @@ Tests for the utilities module.
 import os
 from unittest.mock import patch  # MagicMock not used
 
-from buscolite.utilities import any_overlap, is_file, overlap, which2
+import pytest  # noqa: F401 - Needed for pytest fixtures
 
-# import pytest  # Not used directly, but needed for pytest fixtures
+from buscolite.utilities import any_overlap, is_file, overlap, which2
 
 
 def test_overlap():
