@@ -65,16 +65,22 @@ def load_cutoffs(lineage):
                 cutoffs[busco] = {"score": float(score)}
             else:
                 cutoffs[busco]["score"] = float(score)
-    with open(os.path.join(lineage, "lengths_cutoff"), "r") as infile:
-        for line in infile:
-            busco, _, sigma, length = line.rstrip().split("\t")
-            if float(sigma) == 0.0:
-                sigma = 1
-            if busco not in cutoffs:
-                cutoffs[busco] = {"sigma": float(sigma), "length": int(float(length))}
-            else:
-                cutoffs[busco]["sigma"] = float(sigma)
-                cutoffs[busco]["length"] = int(float(length))
+    # this file is not there anymore in odb12
+    length_cutoffs = os.path.join(lineage, "lengths_cutoff")
+    if os.path.isfile(length_cutoffs):
+        with open(length_cutoffs, "r") as infile:
+            for line in infile:
+                busco, _, sigma, length = line.rstrip().split("\t")
+                if float(sigma) == 0.0:
+                    sigma = 1
+                if busco not in cutoffs:
+                    cutoffs[busco] = {
+                        "sigma": float(sigma),
+                        "length": int(float(length)),
+                    }
+                else:
+                    cutoffs[busco]["sigma"] = float(sigma)
+                    cutoffs[busco]["length"] = int(float(length))
     return cutoffs
 
 
@@ -100,7 +106,6 @@ def check_lineage(lineage):
         "ancestral",
         "ancestral_variants",
         "dataset.cfg",
-        "lengths_cutoff",
         "scores_cutoff",
     ]
     for d in dirs:
@@ -286,6 +291,8 @@ def runbusco(
         with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 2) as executor:
             for k, v in coords.items():
                 busco_prlf = os.path.join(lineage, "prfl", "{}.prfl".format(k))
+                if not os.path.isfile(busco_prlf):
+                    continue
                 for i in v:
                     contig = i["contig"]
                     start = i["coords"][0] - offset

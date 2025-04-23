@@ -307,6 +307,8 @@ def miniprot_prefilter(
             if False in v["partialStart"] and False in v["partialStop"] and not v["pseudo"]:
                 # check complete models with hmmmer to validate and reformat
                 hmmfile = os.path.join(buscodb, "hmms", "{}.hmm".format(v["name"]))
+                if not os.path.isfile(hmmfile):
+                    continue
                 # now we can check via hmmer
                 hmm_result = hmmer_search_single(hmmfile, v["protein"][0].rstrip("*"))
                 if len(hmm_result) > 0:
@@ -323,7 +325,7 @@ def miniprot_prefilter(
                             "hmmer": hmm_result[0],
                             "miniprot_score": results[v["name"]][v["contig"]][0]["score"],
                         }
-                        if not v["name"] in g:
+                        if v["name"] not in g:
                             g[v["name"]] = [final]
                         else:
                             g[v["name"]].append(final)
