@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "buscolite"
-version = "25.4.23"
+version = "25.4.24"
 description = "busco analysis for gene predictions"
 readme = {file = "README.md", content-type = "text/markdown"}
 authors = [

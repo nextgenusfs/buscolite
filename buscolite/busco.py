@@ -497,21 +497,32 @@ def runbusco(
             logger.info("Loaded {} protein sequences from {}".format(len(sequences), input))
         # now we can loop over the hmms in the lineage and run hmmer on each
         results = []
+        hmmfilelookup = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=cpus + 2) as executor:
             for f in os.listdir(os.path.join(lineage, "hmms")):
                 if f.endswith(".hmm"):
+                    if "at" in f:
+                        hmmfilelookup[f.split("at")[0]] = f.split(".hmm")[0]
                     hmmfile = os.path.join(lineage, "hmms", f)
                     results.append(executor.submit(hmmer_search, hmmfile, sequences))
         # process mt results
+        # danger with odb12, the hmm name does not match the file name in scores_cutoffs.... #dumb
         b_results = {}
         for r in results:
             if isinstance(r.result(), list):
                 for x in r.result():
-                    if x["bitscore"] > CutOffs[x["name"]]["score"]:
-                        if x["name"] not in b_results:
-                            b_results[x["name"]] = [x]
+                    if x["name"] not in CutOffs:
+                        if x["name"] in hmmfilelookup:
+                            modelName = hmmfilelookup[x["name"]]
                         else:
-                            b_results[x["name"]].append(x)
+                            modelName = x["name"]
+                    else:
+                        modelName = x["name"]
+                    if x["bitscore"] > CutOffs[modelName]["score"]:
+                        if modelName not in b_results:
+                            b_results[modelName] = [x]
+                        else:
+                            b_results[modelName].append(x)
         b_final = {}
         missing = []
         for b in CutOffs.keys():
