@@ -63,11 +63,16 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # fetch all history and tags
+
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
+
     - name: Debug tag and version
       run: |
         echo "GitHub Ref: ${{ github.ref }}"
@@ -96,6 +101,10 @@ jobs:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # fetch all history and tags
+
     - name: Download all the dists
       uses: actions/download-artifact@v4
       with:
