@@ -1,6 +1,15 @@
 name: Publish Python 🐍 distribution 📦 to PyPI and TestPyPI
 
-on: push
+on:
+  push:
+    branches: [ main, master ]  # Keep this for building
+  workflow_dispatch:  # Add manual trigger
+    inputs:
+      publish_to_testpypi:
+        description: 'Publish to TestPyPI'
+        required: true
+        default: false
+        type: boolean
 
 # Limit concurrent runs of this workflow
 concurrency:
@@ -64,8 +73,8 @@ jobs:
 
   publish-to-testpypi:
     name: Publish Python 🐍 distribution 📦 to TestPyPI
-    # Only publish to TestPyPI on pushes to the main branch
-    if: github.ref == 'refs/heads/main'
+    # Only publish to TestPyPI when manually triggered
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_to_testpypi == true
     needs:
     - build
     runs-on: ubuntu-latest
