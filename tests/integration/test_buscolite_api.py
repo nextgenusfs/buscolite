@@ -12,7 +12,7 @@ def test_buscolite_import():
 
 def test_buscolite_logger():
     """Test that the logger can be initialized."""
-    from buscolite.log import get_logger
+    from buscolite.log import startLogging
 
-    logger = get_logger()
+    logger = startLogging()
     assert logger is not None
