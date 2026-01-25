@@ -1,7 +1,7 @@
 buscolite.egg-info/*
 build/*
 local_tests/*
-docs/*
+site/*
 buscolite/__pycache*
 tests/__pycache*
 .DS_Store
