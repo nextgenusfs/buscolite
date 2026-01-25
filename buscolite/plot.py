@@ -5,6 +5,7 @@ This module provides simple, dependency-free plotting using only Python's
 standard library xml.etree.ElementTree for SVG generation.
 """
 
+import sys
 import xml.etree.ElementTree as ET
 
 
@@ -292,7 +293,9 @@ class BuscoPlot:
 
         # Write to file
         tree = ET.ElementTree(svg)
-        ET.indent(tree, space="  ")
+        # ET.indent() was added in Python 3.9, so only use it if available
+        if sys.version_info >= (3, 9):
+            ET.indent(tree, space="  ")
         tree.write(output_file, encoding="utf-8", xml_declaration=True)
 
 
@@ -628,5 +631,7 @@ def generate_multi_plot(datasets, output_file):
 
     # Write to file
     tree = ET.ElementTree(svg)
-    ET.indent(tree, space="  ")
+    # ET.indent() was added in Python 3.9, so only use it if available
+    if sys.version_info >= (3, 9):
+        ET.indent(tree, space="  ")
     tree.write(output_file, encoding="utf-8", xml_declaration=True)
