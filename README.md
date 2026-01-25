@@ -18,6 +18,14 @@ BUSCO models/lineages can be downloaded from the BUSCO site: [v5](https://busco-
 * [pyfastx](https://github.com/lmdu/pyfastx)
 * [natsort](https://pypi.org/project/natsort/)
 
+##### Features:
+* **Genome and protein mode analysis**: Run BUSCO on genome assemblies or protein sets
+* **BUSCO v6-compatible filtering**: Implements the same filtering logic as BUSCO v6 for accurate results
+* **Publication-quality plots**: Generate SVG plots from results with zero additional dependencies
+* **Multi-sample comparison**: Compare multiple BUSCO results in a single plot
+* **Python API**: Use BUSCOlite programmatically in your own scripts
+* **Lightweight**: Minimal dependencies, easy to install and integrate
+
 #### Why?
 
 [Funannotate](https://github.com/nextgenusfs/funannotate) uses BUSCO to find core conserved marker genes that it uses as a basis to train several ab-initio gene predictors. When BUSCO v2 came out it was python3 only and at that time funannotate was still python2, so I modified the BUSCOv2 source code to be compatible with python2 so it could be run within funannotate. Now BUSCOv5 is the current release, that has numerous bells and whistles that funannotate does not need (no knock against bells and whistles) but the real problem is that due to the large number of dependencies associated with these extra tools is that I cannot build a conda image that includes funannotate and BUSCOv5. So I re-wrote BUSCOv2 here so that it has limited dependencies and will make it easier to incorporate as a dependency of funannotate.  A side note is that the `metaeuk` method that BUSCOv5 now uses as default does not produce complete gene models, in fact the protein sequences it outputs have lowercase sequences that are actually not found in your genome at all.  So for training ab-initio predictors, the `metaeuk` method is not useful -- however, it is faster to get your simple stats on "how complete is my genome assembly".
@@ -32,6 +40,25 @@ To install the most updated code in master you can run:
 ```
 python -m pip install git+https://github.com/nextgenusfs/buscolite.git
 ```
+
+## Quick Start
+
+Run BUSCO analysis on a genome:
+```bash
+buscolite -i genome.fasta -o mygenome -m genome -l /path/to/fungi_odb12 -c 8
+```
+
+Generate a plot from the results:
+```bash
+buscolite-plot mygenome.buscolite.json -o mygenome_plot.svg
+```
+
+Compare multiple samples:
+```bash
+buscolite-plot sample1.buscolite.json sample2.buscolite.json sample3.buscolite.json -o comparison.svg
+```
+
+For detailed usage instructions, see the [Usage Guide](docs/USAGE.md).
 
 ## Development
 

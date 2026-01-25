@@ -34,6 +34,7 @@ Repository = "https://github.com/nextgenusfs/buscolite.git"
 
 [project.scripts]
 buscolite = "buscolite.__main__:main"
+buscolite-plot = "buscolite.plot_cli:main"
 
 [tool.hatch.build]
 include = [

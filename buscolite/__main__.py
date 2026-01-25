@@ -57,16 +57,31 @@ def main():
     summary = "{}.buscolite.tsv".format(args.out)
     with open(summary, "w") as outfile:
         summary_writer(d, m, sys.argv, cfg, outfile, mode=args.mode)
-    # write output file to json, might useful
+
+    # write comprehensive JSON output for plotting and downstream analysis
     raw = "{}.buscolite.json".format(args.out)
+    json_output = {
+        "version": __version__,
+        "mode": args.mode,
+        "input": args.input,
+        "lineage": cfg,
+        "stats": stats,
+        "results": d,
+        "missing": m,
+        "command": " ".join(sys.argv),
+    }
     with open(raw, "w") as outfile:
-        outfile.write(json.dumps(d, indent=2))
+        outfile.write(json.dumps(json_output, indent=2))
+
+    # Log output files
     if args.mode == "genome":
         logger.info(
-            "Ouput files written:\n GFF3={}\n Summary={}\n Raw={}".format(gff, summary, raw)
+            "Output files written:\n GFF3={}\n Summary={}\n JSON={}".format(gff, summary, raw)
         )
     else:
-        logger.info("Ouput files written:\n Summary={}\n Raw={}".format(summary, raw))
+        logger.info("Output files written:\n Summary={}\n JSON={}".format(summary, raw))
+
+    logger.info("To generate a plot, run: buscolite-plot {} -o {}.svg".format(raw, args.out))
 
 
 def parse_args(args):
@@ -144,6 +159,7 @@ def parse_args(args):
         metavar="",
         help="Length of flanking region to use for augustus prediction from miniprot hits.",
     )
+
     help_args = parser.add_argument_group("Help")
     help_args.add_argument(
         "-h",
