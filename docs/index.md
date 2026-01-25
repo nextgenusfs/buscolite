@@ -10,12 +10,11 @@ BUSCOlite is a streamlined implementation of BUSCO (Benchmarking Universal Singl
 [![codecov](https://codecov.io/gh/nextgenusfs/buscolite/branch/master/graph/badge.svg)](https://codecov.io/gh/nextgenusfs/buscolite)
 
 !!! note
-    This tool is not meant to be a replacement of BUSCO. For most general use cases you should continue to use [BUSCOv5](https://busco.ezlab.org).
+    This tool is not meant to be a replacement of BUSCO. For most general use cases you should continue to use [BUSCO](https://busco.ezlab.org).
 
 ## Features
 
 - **Genome and protein mode analysis**: Run BUSCO on genome assemblies or protein sets
-- **BUSCO v6-compatible filtering**: Implements the same filtering logic as BUSCO v6 for accurate results
 - **Publication-quality plots**: Generate SVG plots from results with zero additional dependencies
 - **Multi-sample comparison**: Compare multiple BUSCO results in a single plot
 - **Python API**: Use BUSCOlite programmatically in your own scripts
@@ -59,9 +58,9 @@ buscolite-plot sample1.buscolite.json sample2.buscolite.json sample3.buscolite.j
 
 ## Why BUSCOlite?
 
-[Funannotate](https://github.com/nextgenusfs/funannotate) uses BUSCO to find core conserved marker genes that it uses as a basis to train several ab-initio gene predictors. When BUSCO v2 came out it was python3 only and at that time funannotate was still python2, so the BUSCO v2 source code was modified to be compatible with python2 so it could be run within funannotate. 
+[Funannotate](https://github.com/nextgenusfs/funannotate) uses BUSCO to find core conserved marker genes that it uses as a basis to train several ab-initio gene predictors. When BUSCO v2 came out it was python3 only and at that time funannotate was still python2, so the BUSCO v2 source code was modified to be compatible with python2 so it could be run within funannotate.
 
-Now BUSCOv5 is the current release, which has numerous bells and whistles that funannotate does not need. The real problem is that due to the large number of dependencies associated with these extra tools, it's difficult to build a conda image that includes funannotate and BUSCOv5. 
+Now BUSCOv5 is the current release, which has numerous bells and whistles that funannotate does not need. The real problem is that due to the large number of dependencies associated with these extra tools, it's difficult to build a conda image that includes funannotate and BUSCOv5.
 
 BUSCOlite was re-written to have limited dependencies and make it easier to incorporate as a dependency of funannotate. Additionally, the `metaeuk` method that BUSCOv5 uses as default does not produce complete gene models - the protein sequences it outputs have lowercase sequences that are not actually found in your genome. For training ab-initio predictors, the `metaeuk` method is not useful.
 
@@ -84,4 +83,3 @@ BUSCOlite does not provide an internal method to download lineages, as it is tri
 ## License
 
 BUSCOlite is released under the BSD License. See the [LICENSE](https://github.com/nextgenusfs/buscolite/blob/main/LICENSE.md) file for details.
-

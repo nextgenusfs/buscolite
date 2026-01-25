@@ -6,8 +6,6 @@ import os
 import tempfile
 import xml.etree.ElementTree as ET
 
-import pytest
-
 from buscolite.plot import BuscoPlot, generate_plot
 
 
@@ -160,4 +158,3 @@ def test_svg_colors():
     assert BuscoPlot.COLORS["complete_duplicated"] == "#3492C7"
     assert BuscoPlot.COLORS["fragmented"] == "#F0E442"
     assert BuscoPlot.COLORS["missing"] == "#F04442"
-

@@ -124,4 +124,3 @@ When reporting bugs, please include:
 - Expected behavior
 - Actual behavior
 - Any error messages or logs
-

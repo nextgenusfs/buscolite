@@ -2,8 +2,6 @@
 Tests for the new filtering functions.
 """
 
-import pytest
-
 from buscolite.utilities import filter_low_scoring_matches, remove_duplicate_gene_matches
 
 
@@ -107,7 +105,11 @@ def test_remove_duplicate_gene_matches_genome_mode():
             {"contig": "chr1", "location": [100, 200], "bitscore": 100.0},
         ],
         "BUSCO2": [
-            {"contig": "chr1", "location": [100, 200], "bitscore": 80.0},  # Same location, lower score
+            {
+                "contig": "chr1",
+                "location": [100, 200],
+                "bitscore": 80.0,
+            },  # Same location, lower score
         ],
     }
 
@@ -116,4 +118,3 @@ def test_remove_duplicate_gene_matches_genome_mode():
     # The same genomic location should only appear once (in BUSCO1)
     assert len(filtered["BUSCO1"]) == 1
     assert "BUSCO2" not in filtered or len(filtered["BUSCO2"]) == 0
-

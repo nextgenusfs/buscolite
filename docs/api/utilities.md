@@ -8,4 +8,3 @@ Utility functions for filtering and processing BUSCO results.
       members:
         - filter_low_scoring_matches
         - remove_duplicate_gene_matches
-

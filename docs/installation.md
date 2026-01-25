@@ -100,4 +100,3 @@ buscolite --version
 ```
 
 This should display the version of BUSCOlite.
-

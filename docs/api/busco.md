@@ -9,4 +9,3 @@ Main module for running BUSCO analysis.
         - runbusco
         - run_genome_mode
         - run_protein_mode
-

@@ -459,22 +459,17 @@ def runbusco(
             for match in matches:
                 # Find the original match
                 for orig_match in b_results_for_filter[busco_id]:
-                    if (
-                        orig_match.get("contig") == match.get("contig")
-                        and orig_match.get("location") == match.get("location")
-                    ):
+                    if orig_match.get("contig") == match.get("contig") and orig_match.get(
+                        "location"
+                    ) == match.get("location"):
                         # Use the original match (without flattened bitscore)
-                        orig_without_flat = {
-                            k: v for k, v in orig_match.items() if k != "bitscore"
-                        }
+                        orig_without_flat = {k: v for k, v in orig_match.items() if k != "bitscore"}
                         b_results[busco_id].append(orig_without_flat)
                         break
 
         if verbosity >= 2:
             logger.info(
-                "After filtering: {} matches remain".format(
-                    sum(len(v) for v in b_results.values())
-                )
+                "After filtering: {} matches remain".format(sum(len(v) for v in b_results.values()))
             )
 
         # finally loop through results, classify and reorganize
@@ -584,9 +579,7 @@ def runbusco(
         b_results = remove_duplicate_gene_matches(b_results, score_key="bitscore")
         if verbosity >= 2:
             logger.info(
-                "After filtering: {} matches remain".format(
-                    sum(len(v) for v in b_results.values())
-                )
+                "After filtering: {} matches remain".format(sum(len(v) for v in b_results.values()))
             )
 
         b_final = {}

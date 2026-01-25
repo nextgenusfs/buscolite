@@ -108,4 +108,3 @@ For detailed documentation of each module, see the individual module pages:
 - [fastx](fastx.md) - FASTA/FASTQ handling
 - [augustus](augustus.md) - Augustus integration
 - [log](log.md) - Logging utilities
-

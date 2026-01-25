@@ -89,4 +89,3 @@ BUSCOlite generates three main output files:
 - [Usage Guide](usage.md) - Detailed usage documentation
 - [API Reference](api/overview.md) - Python API documentation
 - [Contributing](contributing.md) - How to contribute to BUSCOlite
-

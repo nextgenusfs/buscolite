@@ -273,7 +273,6 @@ class BuscoPlot:
 
         # Add summary line
         summary_y = legend_y + 30
-        complete_total = complete_single + complete_dup
         complete_pct = complete_single_pct + complete_dup_pct
         summary_text = f"C:{complete_pct:.1f}%[S:{complete_single_pct:.1f}%,D:{complete_dup_pct:.1f}%],F:{fragmented_pct:.1f}%,M:{missing_pct:.1f}%,n:{total}"
 
@@ -631,4 +630,3 @@ def generate_multi_plot(datasets, output_file):
     tree = ET.ElementTree(svg)
     ET.indent(tree, space="  ")
     tree.write(output_file, encoding="utf-8", xml_declaration=True)
-
