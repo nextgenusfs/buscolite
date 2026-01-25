@@ -101,6 +101,118 @@ def any_overlap(query, lcoords):
     return v
 
 
+def filter_low_scoring_matches(busco_results, threshold=0.85):
+    """
+    Filter out matches that score less than a threshold percentage of the top bitscore
+    for each BUSCO. This implements the BUSCO v6 filtering logic.
+
+    Parameters
+    ----------
+    busco_results : dict
+        Dictionary of BUSCO results where keys are BUSCO IDs and values are lists
+        of match dictionaries containing 'bitscore' keys
+    threshold : float, optional
+        Minimum score threshold as fraction of top score (default: 0.85)
+
+    Returns
+    -------
+    dict
+        Filtered dictionary with low-scoring matches removed
+    """
+    filtered = {}
+    for busco_id, matches in busco_results.items():
+        if len(matches) == 0:
+            continue
+        elif len(matches) == 1:
+            filtered[busco_id] = matches
+        else:
+            # Find the maximum bitscore for this BUSCO
+            max_bitscore = max(m["bitscore"] for m in matches)
+            cutoff = threshold * max_bitscore
+            # Keep only matches above the cutoff
+            kept_matches = [m for m in matches if m["bitscore"] >= cutoff]
+            if len(kept_matches) > 0:
+                filtered[busco_id] = kept_matches
+    return filtered
+
+
+def remove_duplicate_gene_matches(busco_results, score_key="bitscore"):
+    """
+    When the same gene/sequence matches multiple BUSCOs, keep only the highest
+    scoring match. This prevents a single gene from being counted multiple times.
+
+    Parameters
+    ----------
+    busco_results : dict
+        Dictionary of BUSCO results where keys are BUSCO IDs and values are lists
+        of match dictionaries
+    score_key : str, optional
+        Key to use for scoring (default: 'bitscore')
+
+    Returns
+    -------
+    dict
+        Filtered dictionary with duplicate gene matches removed
+    """
+    # Build a reverse mapping: gene_id -> list of (busco_id, match_dict, score)
+    gene_to_buscos = {}
+    for busco_id, matches in busco_results.items():
+        for match in matches:
+            # For protein mode, use 'hit' as gene identifier
+            # For genome mode, use combination of contig and location
+            if "hit" in match:
+                gene_id = match["hit"]
+            elif "contig" in match and "location" in match:
+                gene_id = "{}_{}:{}".format(
+                    match["contig"], match["location"][0], match["location"][1]
+                )
+            else:
+                continue
+
+            score = match.get(score_key, 0)
+            if gene_id not in gene_to_buscos:
+                gene_to_buscos[gene_id] = []
+            gene_to_buscos[gene_id].append((busco_id, match, score))
+
+    # Find genes that match multiple BUSCOs
+    genes_to_remove = {}
+    for gene_id, busco_matches in gene_to_buscos.items():
+        if len(busco_matches) > 1:
+            # Sort by score descending
+            busco_matches.sort(key=lambda x: x[2], reverse=True)
+            # Keep the best match, mark others for removal
+            for busco_id, match, score in busco_matches[1:]:
+                if busco_id not in genes_to_remove:
+                    genes_to_remove[busco_id] = []
+                genes_to_remove[busco_id].append(gene_id)
+
+    # Remove the duplicate matches
+    filtered = {}
+    for busco_id, matches in busco_results.items():
+        if busco_id in genes_to_remove:
+            genes_to_skip = set(genes_to_remove[busco_id])
+            kept_matches = []
+            for match in matches:
+                if "hit" in match:
+                    gene_id = match["hit"]
+                elif "contig" in match and "location" in match:
+                    gene_id = "{}_{}:{}".format(
+                        match["contig"], match["location"][0], match["location"][1]
+                    )
+                else:
+                    gene_id = None
+
+                if gene_id not in genes_to_skip:
+                    kept_matches.append(match)
+
+            if len(kept_matches) > 0:
+                filtered[busco_id] = kept_matches
+        else:
+            filtered[busco_id] = matches
+
+    return filtered
+
+
 def runprocess(cmd, stdout=False, stderr=False, cwd=".", debug=False):
     if not stdout and not stderr:
         proc = subprocess.Popen(

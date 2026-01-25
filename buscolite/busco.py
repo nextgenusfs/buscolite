@@ -17,7 +17,7 @@ from .search import (
     miniprot_version,
     pyhmmer_version,
 )
-from .utilities import any_overlap
+from .utilities import any_overlap, filter_low_scoring_matches, remove_duplicate_gene_matches
 
 
 def load_config(lineage):
@@ -431,6 +431,52 @@ def runbusco(
                 else:
                     b_results[b].append(res)
 
+        # Apply BUSCO v6-style filtering
+        # Step 1: Remove matches scoring less than 85% of top bitscore for each BUSCO
+        if verbosity >= 2:
+            logger.info(
+                "Filtering {} initial matches using 85% bitscore threshold".format(
+                    sum(len(v) for v in b_results.values())
+                )
+            )
+        # For genome mode, the bitscore is in the nested 'hmmer' dict
+        b_results_for_filter = {}
+        for busco_id, matches in b_results.items():
+            b_results_for_filter[busco_id] = []
+            for match in matches:
+                # Create a flattened version for filtering
+                flat_match = match.copy()
+                if "hmmer" in match:
+                    flat_match["bitscore"] = match["hmmer"]["bitscore"]
+                b_results_for_filter[busco_id].append(flat_match)
+
+        filtered = filter_low_scoring_matches(b_results_for_filter, threshold=0.85)
+
+        # Map back to original structure
+        b_results = {}
+        for busco_id, matches in filtered.items():
+            b_results[busco_id] = []
+            for match in matches:
+                # Find the original match
+                for orig_match in b_results_for_filter[busco_id]:
+                    if (
+                        orig_match.get("contig") == match.get("contig")
+                        and orig_match.get("location") == match.get("location")
+                    ):
+                        # Use the original match (without flattened bitscore)
+                        orig_without_flat = {
+                            k: v for k, v in orig_match.items() if k != "bitscore"
+                        }
+                        b_results[busco_id].append(orig_without_flat)
+                        break
+
+        if verbosity >= 2:
+            logger.info(
+                "After filtering: {} matches remain".format(
+                    sum(len(v) for v in b_results.values())
+                )
+            )
+
         # finally loop through results, classify and reorganize
         b_final = {}
         missing = []
@@ -523,6 +569,26 @@ def runbusco(
                             b_results[modelName] = [x]
                         else:
                             b_results[modelName].append(x)
+
+        # Apply BUSCO v6-style filtering
+        # Step 1: Remove matches scoring less than 85% of top bitscore for each BUSCO
+        if verbosity >= 2:
+            logger.info(
+                "Filtering {} initial matches using 85% bitscore threshold".format(
+                    sum(len(v) for v in b_results.values())
+                )
+            )
+        b_results = filter_low_scoring_matches(b_results, threshold=0.85)
+
+        # Step 2: Remove duplicate gene matches (same gene matching multiple BUSCOs)
+        b_results = remove_duplicate_gene_matches(b_results, score_key="bitscore")
+        if verbosity >= 2:
+            logger.info(
+                "After filtering: {} matches remain".format(
+                    sum(len(v) for v in b_results.values())
+                )
+            )
+
         b_final = {}
         missing = []
         for b in CutOffs.keys():
