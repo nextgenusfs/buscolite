@@ -591,7 +591,7 @@ def hmmer_search_single(hmmfile, seq):
     results = []
     for top_hits in pyhmmer.hmmsearch([hmm], [prot.digitize(alphabet)]):
         for hit in top_hits:
-            cog = hit.best_domain.alignment.hmm_name.decode()
+            cog = hit.best_domain.alignment.hmm_name
             domains = []
             for h in hit.domains:
                 domains.append(
@@ -639,7 +639,7 @@ def hmmer_search(hmmfile, sequences):
     results = []
     for top_hits in pyhmmer.hmmsearch([hmm], sequences):
         for hit in top_hits:
-            cog = hit.best_domain.alignment.hmm_name.decode()
+            cog = hit.best_domain.alignment.hmm_name
             domains = []
             for h in hit.domains:
                 domains.append(
@@ -654,7 +654,7 @@ def hmmer_search(hmmfile, sequences):
             results.append(
                 {
                     "name": cog,
-                    "hit": hit.name.decode(),
+                    "hit": hit.name,
                     "bitscore": hit.score,
                     "evalue": hit.evalue,
                     "domains": domains,
