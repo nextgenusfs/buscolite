@@ -25,7 +25,9 @@ def summary_writer(result, missing, cmd, cfg, handle, mode="genome"):
     handle.write("# To reproduce this run: {}\n".format(" ".join(cmd)))
     handle.write("#\n")
     if mode == "genome":
-        handle.write("# Busco id\tStatus\tContig\tStart\tEnd\tHMM_score\tLength\tminiprot_score\n")
+        handle.write(
+            "# Busco id\tStatus\tContig\tStart\tEnd\tHMM_score\tLength\tminiprot_score\n"
+        )
         for k, v in natsorted(result.items()):
             if "_" in k:
                 busco = k.rsplit("_", 1)[0]
@@ -85,7 +87,9 @@ def summary_writer(result, missing, cmd, cfg, handle, mode="genome"):
 
 def overlap(start1, end1, start2, end2):
     """how much does the range (start1, end1) overlap with (start2, end2)"""
-    return max(max((end2 - start1), 0) - max((end2 - end1), 0) - max((start2 - start1), 0), 0)
+    return max(
+        max((end2 - start1), 0) - max((end2 - end1), 0) - max((start2 - start1), 0), 0
+    )
 
 
 def any_overlap(query, lcoords):
@@ -99,13 +103,19 @@ def any_overlap(query, lcoords):
 
 def runprocess(cmd, stdout=False, stderr=False, cwd=".", debug=False):
     if not stdout and not stderr:
-        proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
     elif stdout and not stderr:
         with open(stdout, "w") as outfile:
-            proc = subprocess.Popen(cmd, cwd=cwd, stdout=outfile, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(
+                cmd, cwd=cwd, stdout=outfile, stderr=subprocess.PIPE
+            )
     elif not stdout and stderr:
         with open(stderr, "w") as outfile:
-            proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=outfile)
+            proc = subprocess.Popen(
+                cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=outfile
+            )
     elif stdout and stderr:
         if stdout == stderr:
             with open(stdout, "w") as outfile:
@@ -113,7 +123,9 @@ def runprocess(cmd, stdout=False, stderr=False, cwd=".", debug=False):
         else:
             with open(stdout, "w") as outfile1:
                 with open(stderr, "w") as outfile2:
-                    proc = subprocess.Popen(cmd, cwd=cwd, stdout=outfile1, stderr=outfile2)
+                    proc = subprocess.Popen(
+                        cmd, cwd=cwd, stdout=outfile1, stderr=outfile2
+                    )
     stdout, stderr = proc.communicate()
     if proc.returncode != 0:
         sys.stderr.write("CMD ERROR: {}".format(" ".join(cmd)))
@@ -131,7 +143,9 @@ def runprocess(cmd, stdout=False, stderr=False, cwd=".", debug=False):
 
 def execute(cmd):
     DEVNULL = open(os.devnull, "w")
-    popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL)
+    popen = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL
+    )
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line
     popen.stdout.close()
@@ -144,7 +158,9 @@ def execute_timeout(cmd, timeout=120):
     # stream execute but add a timeout
     DEVNULL = open(os.devnull, "w")
     try:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL)
+        p = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL
+        )
         return_code = p.wait(timeout=timeout)
         if return_code:
             raise subprocess.CalledProcessError(return_code, cmd)
