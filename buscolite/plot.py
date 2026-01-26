@@ -33,7 +33,7 @@ class BuscoPlot:
         """
         self.width = width
         self.height = height
-        self.margin = {"top": 60, "right": 40, "bottom": 80, "left": 120}
+        self.margin = {"top": 60, "right": 100, "bottom": 80, "left": 120}
         self.plot_width = width - self.margin["left"] - self.margin["right"]
         self.plot_height = height - self.margin["top"] - self.margin["bottom"]
 
@@ -188,6 +188,72 @@ class BuscoPlot:
                 },
             )
 
+        # Add axes
+        # X-axis (horizontal line below the bar)
+        axis_y = bar_y + bar_height
+        ET.SubElement(
+            svg,
+            "line",
+            {
+                "x1": str(self.margin["left"]),
+                "y1": str(axis_y),
+                "x2": str(self.margin["left"] + self.plot_width),
+                "y2": str(axis_y),
+                "stroke": "#333",
+                "stroke-width": "2",
+            },
+        )
+
+        # Y-axis (vertical line on the left)
+        ET.SubElement(
+            svg,
+            "line",
+            {
+                "x1": str(self.margin["left"]),
+                "y1": str(bar_y),
+                "x2": str(self.margin["left"]),
+                "y2": str(axis_y),
+                "stroke": "#333",
+                "stroke-width": "2",
+            },
+        )
+
+        # Add tick marks and labels for percentage scale (0%, 25%, 50%, 75%, 100%)
+        tick_values = [0, 25, 50, 75, 100]
+        tick_height = 8
+
+        for tick_pct in tick_values:
+            tick_x = self.margin["left"] + (tick_pct / 100) * self.plot_width
+
+            # Tick mark
+            ET.SubElement(
+                svg,
+                "line",
+                {
+                    "x1": str(tick_x),
+                    "y1": str(axis_y),
+                    "x2": str(tick_x),
+                    "y2": str(axis_y + tick_height),
+                    "stroke": "#333",
+                    "stroke-width": "2",
+                },
+            )
+
+            # Tick label
+            tick_label = ET.SubElement(
+                svg,
+                "text",
+                {
+                    "x": str(tick_x),
+                    "y": str(axis_y + tick_height + 15),
+                    "text-anchor": "middle",
+                    "font-family": "Arial, sans-serif",
+                    "font-size": "11",
+                    "fill": "#333",
+                },
+            )
+            tick_label.text = f"{tick_pct}%"
+
         # Add percentage labels on the bar
         x_offset = self.margin["left"]
         label_y = bar_y + bar_height / 2 + 5
@@ -236,8 +302,18 @@ class BuscoPlot:
         legend_spacing = 180
 
         categories = [
-            ("Complete (S)", self.COLORS["complete_single"], complete_single, complete_single_pct),
-            ("Complete (D)", self.COLORS["complete_duplicated"], complete_dup, complete_dup_pct),
+            (
+                "Complete (S)",
+                self.COLORS["complete_single"],
+                complete_single,
+                complete_single_pct,
+            ),
+            (
+                "Complete (D)",
+                self.COLORS["complete_duplicated"],
+                complete_dup,
+                complete_dup_pct,
+            ),
             ("Fragmented (F)", self.COLORS["fragmented"], fragmented, fragmented_pct),
             ("Missing (M)", self.COLORS["missing"], missing, missing_pct),
         ]
@@ -445,13 +521,13 @@ def generate_multi_plot(datasets, output_file):
         # Calculate bar position
         bar_y = margin["top"] + idx * (bar_height + bar_spacing)
 
-        # Add dataset label
+        # Add dataset label (name)
         label = ET.SubElement(
             svg,
             "text",
             {
                 "x": str(margin["left"] - 10),
-                "y": str(bar_y + bar_height / 2 + 5),
+                "y": str(bar_y + bar_height / 2 - 5),
                 "text-anchor": "end",
                 "font-family": "Arial, sans-serif",
                 "font-size": "12",
@@ -459,6 +535,27 @@ def generate_multi_plot(datasets, output_file):
             },
         )
         label.text = name
+
+        # Add detailed counts below the name
+        complete_total = complete_single + complete_dup
+        # complete_pct = complete_single_pct + complete_dup_pct
+        counts_text = (
+            f"C:{complete_total}[S:{complete_single},D:{complete_dup}],F:{fragmented},M:{missing}"
+        )
+
+        counts_label = ET.SubElement(
+            svg,
+            "text",
+            {
+                "x": str(margin["left"] - 10),
+                "y": str(bar_y + bar_height / 2 + 10),
+                "text-anchor": "end",
+                "font-family": "monospace",
+                "font-size": "9",
+                "fill": "#666",
+            },
+        )
+        counts_label.text = counts_text
 
         # Draw stacked bar
         x_offset = margin["left"]
@@ -586,6 +683,76 @@ def generate_multi_plot(datasets, output_file):
                     },
                 )
                 text_elem.text = f"{missing_pct:.1f}%"
+
+    # Add axes
+    # Calculate the position of the bottom of the last bar
+    last_bar_bottom = margin["top"] + (n_datasets - 1) * (bar_height + bar_spacing) + bar_height
+
+    # X-axis (horizontal line below all bars)
+    axis_y = last_bar_bottom + 5
+    ET.SubElement(
+        svg,
+        "line",
+        {
+            "x1": str(margin["left"]),
+            "y1": str(axis_y),
+            "x2": str(margin["left"] + plot_width),
+            "y2": str(axis_y),
+            "stroke": "#333",
+            "stroke-width": "2",
+        },
+    )
+
+    # Y-axis (vertical line on the left)
+    first_bar_top = margin["top"]
+    ET.SubElement(
+        svg,
+        "line",
+        {
+            "x1": str(margin["left"]),
+            "y1": str(first_bar_top),
+            "x2": str(margin["left"]),
+            "y2": str(axis_y),
+            "stroke": "#333",
+            "stroke-width": "2",
+        },
+    )
+
+    # Add tick marks and labels for percentage scale (0%, 25%, 50%, 75%, 100%)
+    tick_values = [0, 25, 50, 75, 100]
+    tick_height = 8
+
+    for tick_pct in tick_values:
+        tick_x = margin["left"] + (tick_pct / 100) * plot_width
+
+        # Tick mark
+        ET.SubElement(
+            svg,
+            "line",
+            {
+                "x1": str(tick_x),
+                "y1": str(axis_y),
+                "x2": str(tick_x),
+                "y2": str(axis_y + tick_height),
+                "stroke": "#333",
+                "stroke-width": "2",
+            },
+        )
+
+        # Tick label
+        tick_label = ET.SubElement(
+            svg,
+            "text",
+            {
+                "x": str(tick_x),
+                "y": str(axis_y + tick_height + 15),
+                "text-anchor": "middle",
+                "font-family": "Arial, sans-serif",
+                "font-size": "11",
+                "fill": "#333",
+            },
+        )
+        tick_label.text = f"{tick_pct}%"
 
     # Add legend at the bottom
     legend_y = margin["top"] + plot_height + 30

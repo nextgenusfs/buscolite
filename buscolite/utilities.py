@@ -143,7 +143,8 @@ def remove_duplicate_gene_matches(busco_results, score_key="bitscore"):
         Dictionary of BUSCO results where keys are BUSCO IDs and values are lists
         of match dictionaries
     score_key : str, optional
-        Key to use for scoring (default: 'bitscore')
+        Key to use for scoring. Can be a simple key like 'bitscore' or a nested
+        key like 'hmmer.bitscore' (default: 'bitscore')
 
     Returns
     -------
@@ -165,7 +166,17 @@ def remove_duplicate_gene_matches(busco_results, score_key="bitscore"):
             else:
                 continue
 
-            score = match.get(score_key, 0)
+            # Handle nested score keys (e.g., 'hmmer.bitscore')
+            if "." in score_key:
+                keys = score_key.split(".")
+                score = match
+                for key in keys:
+                    score = score.get(key, {})
+                if not isinstance(score, (int, float)):
+                    score = 0
+            else:
+                score = match.get(score_key, 0)
+
             if gene_id not in gene_to_buscos:
                 gene_to_buscos[gene_id] = []
             gene_to_buscos[gene_id].append((busco_id, match, score))

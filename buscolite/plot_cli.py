@@ -67,11 +67,13 @@ Examples:
             sys.exit(1)
         if not input_file.endswith(".json"):
             print(
-                f"Warning: Input file does not have .json extension: {input_file}", file=sys.stderr
+                f"Warning: Input file does not have .json extension: {input_file}",
+                file=sys.stderr,
             )
 
     # Load JSON data
     datasets = []
+    lineages = []  # Track lineages for validation
     for input_file in args.input:
         try:
             with open(input_file, "r") as f:
@@ -90,6 +92,8 @@ Examples:
                         "config": data["lineage"],
                     }
                 )
+                # Track lineage name for validation
+                lineages.append(data["lineage"].get("name", "Unknown"))
             else:
                 # Old format - just the results dictionary
                 print(
@@ -109,23 +113,36 @@ Examples:
             print(f"Error: Failed to load {input_file}: {e}", file=sys.stderr)
             sys.exit(1)
 
+    # Validate that all datasets use the same lineage (only for multi-sample plots)
+    if len(datasets) > 1:
+        unique_lineages = set(lineages)
+        if len(unique_lineages) > 1:
+            print(
+                "Error: All datasets must use the same BUSCO lineage for comparison.",
+                file=sys.stderr,
+            )
+            print(f"Found {len(unique_lineages)} different lineages:", file=sys.stderr)
+            for i, (input_file, lineage) in enumerate(zip(args.input, lineages)):
+                print(f"  - {input_file}: {lineage}", file=sys.stderr)
+            sys.exit(1)
+
     # Generate plot
     try:
         if len(datasets) == 1:
             # Single dataset - use single plot
             plotter = BuscoPlot(width=800, height=400)
             plotter.create_svg(datasets[0]["stats"], datasets[0]["config"], args.output)
-            print(f"✅ Generated single-sample plot: {args.output}")
+            print(f"Generated single-sample plot: {args.output}")
         else:
             # Multiple datasets - use multi-plot
             generate_multi_plot(datasets, args.output)
-            print(f"✅ Generated multi-sample plot: {args.output}")
-            print(f"   Compared {len(datasets)} datasets:")
+            print(f"Generated multi-sample plot: {args.output}")
+            print(f"Compared {len(datasets)} datasets:")
             for ds in datasets:
                 stats = ds["stats"]
                 complete = stats["single-copy"] + stats["duplicated"]
                 total = stats["total"]
-                print(f"   - {ds['name']}: C:{complete}/{total} ({complete/total*100:.1f}%)")
+                print(f"  - {ds['name']}: C:{complete}/{total} ({complete / total * 100:.1f}%)")
     except Exception as e:
         print(f"Error: Failed to generate plot: {e}", file=sys.stderr)
         import traceback

@@ -118,3 +118,29 @@ def test_remove_duplicate_gene_matches_genome_mode():
     # The same genomic location should only appear once (in BUSCO1)
     assert len(filtered["BUSCO1"]) == 1
     assert "BUSCO2" not in filtered or len(filtered["BUSCO2"]) == 0
+
+
+def test_remove_duplicate_gene_matches_nested_score():
+    """Test duplicate removal with nested score key (e.g., hmmer.bitscore)."""
+    busco_results = {
+        "BUSCO1": [
+            {
+                "contig": "chr1",
+                "location": [100, 200],
+                "hmmer": {"bitscore": 100.0, "evalue": 1e-10},
+            },
+        ],
+        "BUSCO2": [
+            {
+                "contig": "chr1",
+                "location": [100, 200],
+                "hmmer": {"bitscore": 80.0, "evalue": 1e-8},
+            },  # Same location, lower score
+        ],
+    }
+
+    filtered = remove_duplicate_gene_matches(busco_results, score_key="hmmer.bitscore")
+
+    # The same genomic location should only appear once (in BUSCO1)
+    assert len(filtered["BUSCO1"]) == 1
+    assert "BUSCO2" not in filtered or len(filtered["BUSCO2"]) == 0
