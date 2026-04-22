@@ -3,11 +3,12 @@ Tests for the utilities module.
 """
 
 import os
+import subprocess
 from unittest.mock import patch  # MagicMock not used
 
 import pytest  # noqa: F401 - Needed for pytest fixtures
 
-from buscolite.utilities import any_overlap, is_file, overlap, which2
+from buscolite.utilities import any_overlap, execute_timeout, is_file, overlap, which2
 
 
 def test_overlap():
@@ -83,3 +84,31 @@ def test_which2(mock_environ, mock_access, mock_isfile):
 
     # Test with program that doesn't exist
     assert which2("nonexistent") is None
+
+
+def test_execute_timeout_success():
+    """execute_timeout yields stdout lines on success."""
+    lines = list(execute_timeout(["sh", "-c", "echo hello; echo world"]))
+    assert lines == ["hello\n", "world\n"]
+
+
+def test_execute_timeout_failure_captures_stderr():
+    """On non-zero exit, CalledProcessError.stderr contains child stderr."""
+    with pytest.raises(subprocess.CalledProcessError) as excinfo:
+        list(execute_timeout(["sh", "-c", "echo oops 1>&2; exit 1"]))
+    assert excinfo.value.returncode == 1
+    assert "oops" in (excinfo.value.stderr or "")
+
+
+def test_execute_timeout_signal_captures_stderr():
+    """On signal death, CalledProcessError.stderr still holds any buffered stderr."""
+    with pytest.raises(subprocess.CalledProcessError) as excinfo:
+        list(execute_timeout(["sh", "-c", "echo boom 1>&2; kill -ILL $$"]))
+    assert excinfo.value.returncode != 0
+    assert "boom" in (excinfo.value.stderr or "")
+
+
+def test_execute_timeout_respects_timeout():
+    """When the child exceeds the timeout, generator returns empty without raising."""
+    lines = list(execute_timeout(["sh", "-c", "sleep 5; echo late"], timeout=1))
+    assert lines == []
