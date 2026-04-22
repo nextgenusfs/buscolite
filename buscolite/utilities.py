@@ -264,21 +264,30 @@ def execute(cmd):
 
 
 def execute_timeout(cmd, timeout=120):
-    # stream execute but add a timeout
-    DEVNULL = open(os.devnull, "w")
+    # stream execute but add a timeout; capture stderr so callers can see
+    # why a subprocess failed instead of discarding it to /dev/null
+    p = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
     try:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, stderr=DEVNULL)
-        return_code = p.wait(timeout=timeout)
-        if return_code:
-            raise subprocess.CalledProcessError(return_code, cmd)
-        else:
-            for stdout_line in iter(p.stdout.readline, ""):
-                yield stdout_line
-            p.stdout.close()
+        stdout_data, stderr_data = p.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
-        # print(f"Timeout for {cmd} ({timeout}s) expired", file=sys.stderr)
         p.terminate()
-        return ""
+        try:
+            p.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.communicate()
+        return
+    if p.returncode:
+        raise subprocess.CalledProcessError(
+            p.returncode, cmd, output=stdout_data, stderr=stderr_data
+        )
+    for stdout_line in stdout_data.splitlines(keepends=True):
+        yield stdout_line
 
 
 def check_inputs(inputs):

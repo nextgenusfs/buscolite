@@ -3,10 +3,18 @@ Tests for the busco module.
 """
 
 import os
+import subprocess
+from unittest.mock import patch
 
 import pytest  # noqa: F401 - Needed for pytest fixtures
 
-from buscolite.busco import check_lineage, load_config, load_cutoffs
+from buscolite.busco import (
+    check_lineage,
+    load_config,
+    load_cutoffs,
+    predict_and_validate,
+    process_busco_jobs,
+)
 
 
 def test_load_config(mock_busco_lineage):
@@ -95,3 +103,139 @@ def test_check_lineage_missing_file(mock_busco_lineage):
 
     assert valid is False
     assert "scores_cutoff file is missing" in message
+
+
+def _minimal_fadict():
+    return {"contig1": "ACGT" * 25}
+
+
+def test_predict_and_validate_saves_debug_artifacts_on_failure(tmp_path):
+    """On augustus CalledProcessError, debug artifacts are persisted and
+    the exception carries a .buscolite_debug_dir path."""
+    prfl = str(tmp_path / "busco42.prfl")
+    open(prfl, "w").close()
+
+    cmd = ["augustus", "--fake", "arg"]
+    err = subprocess.CalledProcessError(-4, cmd, output=None, stderr="illegal instruction\n")
+
+    with patch("buscolite.busco.proteinprofile", side_effect=err):
+        with pytest.raises(subprocess.CalledProcessError) as excinfo:
+            predict_and_validate(
+                _minimal_fadict(),
+                "contig1",
+                prfl,
+                cutoffs={"busco42": {"score": 100.0}},
+                species="human",
+                start=0,
+                end=20,
+                strand="+",
+                configpath="/nope",
+                blast_score=1.0,
+            )
+
+    debug_dir = getattr(excinfo.value, "buscolite_debug_dir", None)
+    assert debug_dir is not None and os.path.isdir(debug_dir)
+    assert os.path.isfile(os.path.join(debug_dir, "input.fasta"))
+    with open(os.path.join(debug_dir, "input.fasta")) as f:
+        body = f.read()
+    assert ">contig1" in body
+    with open(os.path.join(debug_dir, "cmd.txt")) as f:
+        assert f.read().splitlines() == cmd
+    with open(os.path.join(debug_dir, "returncode.txt")) as f:
+        assert f.read().strip() == "-4"
+    with open(os.path.join(debug_dir, "stderr.txt")) as f:
+        assert "illegal instruction" in f.read()
+
+
+def test_predict_and_validate_cleans_up_on_success(tmp_path):
+    """When augustus returns no predictions, no debug directory is left behind."""
+    prfl = str(tmp_path / "busco42.prfl")
+    open(prfl, "w").close()
+
+    with patch("buscolite.busco.proteinprofile", return_value={}):
+        result = predict_and_validate(
+            _minimal_fadict(),
+            "contig1",
+            prfl,
+            cutoffs={"busco42": {"score": 100.0}},
+            species="human",
+            start=0,
+            end=20,
+            strand="+",
+            configpath="/nope",
+            blast_score=1.0,
+        )
+
+    assert result is False
+
+
+class _FakeLogger:
+    def __init__(self):
+        self.warnings = []
+
+    def warning(self, msg):
+        self.warnings.append(msg)
+
+
+def _make_job(i):
+    return {
+        "contig": "contig1",
+        "prfl": "/tmp/fake_{}.prfl".format(i),
+        "start": i * 100,
+        "end": (i + 1) * 100,
+        "strand": "both",
+        "score": 42.0,
+        "priority": 1,
+    }
+
+
+def test_process_busco_jobs_resilient_one_failure():
+    """One augustus failure should not abort processing of remaining jobs."""
+    logger = _FakeLogger()
+    err = subprocess.CalledProcessError(-4, ["augustus"], stderr="boom")
+    err.buscolite_debug_dir = "/tmp/fake_debug"
+    success = ("bx", {"status": "fragmented", "contig": "c"})
+
+    with patch("buscolite.busco.predict_and_validate", side_effect=[err, success, False]):
+        busco_id, results, submitted, skipped = process_busco_jobs(
+            "bx", [_make_job(0), _make_job(1), _make_job(2)], {}, {}, "human", logger
+        )
+
+    assert busco_id == "bx"
+    assert submitted == 3
+    assert len(results) == 1
+    assert len(logger.warnings) == 1
+    assert "/tmp/fake_debug" in logger.warnings[0]
+    assert "bx" in logger.warnings[0]
+
+
+def test_process_busco_jobs_all_fail():
+    """If every job raises, function returns empty results with all warnings logged."""
+    logger = _FakeLogger()
+    err = subprocess.CalledProcessError(-4, ["augustus"], stderr="boom")
+
+    with patch("buscolite.busco.predict_and_validate", side_effect=[err, err, err]):
+        busco_id, results, submitted, skipped = process_busco_jobs(
+            "bx", [_make_job(0), _make_job(1), _make_job(2)], {}, {}, "human", logger
+        )
+
+    assert results == []
+    assert submitted == 3
+    assert skipped == 0
+    assert len(logger.warnings) == 3
+
+
+def test_process_busco_jobs_early_exit_on_complete():
+    """Finding a complete result should stop submission of remaining jobs."""
+    logger = _FakeLogger()
+    complete = ("bx", {"status": "complete", "contig": "c"})
+
+    with patch("buscolite.busco.predict_and_validate", side_effect=[complete]) as m:
+        busco_id, results, submitted, skipped = process_busco_jobs(
+            "bx", [_make_job(0), _make_job(1), _make_job(2)], {}, {}, "human", logger
+        )
+
+    assert submitted == 1
+    assert skipped == 2
+    assert len(results) == 1
+    assert m.call_count == 1

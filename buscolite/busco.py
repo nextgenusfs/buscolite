@@ -1,6 +1,9 @@
 import concurrent.futures
 import os
+import shutil
+import subprocess
 import tempfile
+import time
 
 import pyfastx
 import pyhmmer
@@ -117,6 +120,34 @@ def check_lineage(lineage):
     return True, ""
 
 
+def _save_augustus_debug(fasta_path, err, busco_name):
+    """
+    Persist the augustus input fasta, command line, return code and stderr to a
+    unique directory so failures (SIGILL, SIGSEGV, non-zero exits) can be
+    reproduced outside buscolite.
+
+    Returns the absolute path to the debug directory.
+    """
+    root = os.path.join(tempfile.gettempdir(), "buscolite_debug")
+    os.makedirs(root, exist_ok=True)
+    prefix = "{}_{}_{}_".format(busco_name, os.getpid(), int(time.time() * 1000))
+    debug_dir = tempfile.mkdtemp(prefix=prefix, dir=root)
+    try:
+        shutil.copyfile(fasta_path, os.path.join(debug_dir, "input.fasta"))
+    except OSError:
+        pass
+    cmd = getattr(err, "cmd", None) or []
+    with open(os.path.join(debug_dir, "cmd.txt"), "w") as f:
+        for arg in cmd:
+            f.write("{}\n".format(arg))
+    with open(os.path.join(debug_dir, "returncode.txt"), "w") as f:
+        f.write("{}\n".format(getattr(err, "returncode", "")))
+    stderr_text = getattr(err, "stderr", None) or ""
+    with open(os.path.join(debug_dir, "stderr.txt"), "w") as f:
+        f.write(stderr_text)
+    return debug_dir
+
+
 def predict_and_validate(
     fadict,
     contig,
@@ -147,23 +178,34 @@ def predict_and_validate(
     Returns:
         tuple: A tuple containing the BUSCO name and the final prediction dictionary if a valid prediction is found, otherwise False.
     """
-    # augustus no longer accepts fasta from stdin, so write tempfile
-    t_fasta = tempfile.NamedTemporaryFile(suffix=".fasta")
-    with open(t_fasta.name, "w") as f:
-        f.write(">{}\n{}\n".format(contig, fadict[contig][start:end]))
-
-    # run augustus on the regions
-    aug_preds = proteinprofile(
-        t_fasta.name,
-        prfl,
-        species=species,
-        start=start,
-        end=end,
-        strand=strand,
-        configpath=configpath,
-    )
-    t_fasta.close()
     busco_name = os.path.basename(prfl).split(".")[0]
+    # augustus no longer accepts fasta from stdin, so write tempfile; use
+    # delete=False so that on subprocess failure we can copy the input into a
+    # debug directory for post-mortem analysis before cleaning up.
+    t_fasta = tempfile.NamedTemporaryFile(suffix=".fasta", delete=False)
+    t_fasta.close()
+    try:
+        with open(t_fasta.name, "w") as f:
+            f.write(">{}\n{}\n".format(contig, fadict[contig][start:end]))
+        try:
+            aug_preds = proteinprofile(
+                t_fasta.name,
+                prfl,
+                species=species,
+                start=start,
+                end=end,
+                strand=strand,
+                configpath=configpath,
+            )
+        except subprocess.CalledProcessError as e:
+            debug_dir = _save_augustus_debug(t_fasta.name, e, busco_name)
+            e.buscolite_debug_dir = debug_dir
+            raise
+    finally:
+        try:
+            os.unlink(t_fasta.name)
+        except OSError:
+            pass
     if len(aug_preds) > 0:
         hmmfile = os.path.join(
             os.path.dirname(os.path.dirname(prfl)), "hmms", "{}.hmm".format(busco_name)
@@ -196,6 +238,73 @@ def predict_and_validate(
                     }
                     return (busco_name, final)
     return False
+
+
+def process_busco_jobs(busco_id, job_list, seq_records, cutoffs, species, logger):
+    """
+    Process all jobs for a single BUSCO in priority order. Returns early if a
+    complete model is found. A subprocess failure (e.g. augustus dying with
+    SIGILL) is logged and skipped so the rest of the run can proceed.
+
+    Returns:
+        tuple: (busco_id, results_list, jobs_submitted, jobs_skipped)
+    """
+    results = []
+    jobs_submitted = 0
+    jobs_skipped = 0
+
+    for job in job_list:
+        jobs_submitted += 1
+        try:
+            result = predict_and_validate(
+                seq_records,
+                job["contig"],
+                job["prfl"],
+                cutoffs,
+                species,
+                job["start"],
+                job["end"],
+                job["strand"],
+                False,
+                job["score"],
+            )
+        except subprocess.CalledProcessError as e:
+            debug_dir = getattr(e, "buscolite_debug_dir", None)
+            logger.warning(
+                "augustus failed for BUSCO {} on {}:{}-{} ({}) rc={} — skipping. debug_dir={}".format(
+                    busco_id,
+                    job["contig"],
+                    job["start"],
+                    job["end"],
+                    job["strand"],
+                    e.returncode,
+                    debug_dir,
+                )
+            )
+            continue
+        except Exception as e:
+            logger.warning(
+                "unexpected error for BUSCO {} on {}:{}-{} ({}): {} — skipping".format(
+                    busco_id,
+                    job["contig"],
+                    job["start"],
+                    job["end"],
+                    job["strand"],
+                    e,
+                )
+            )
+            continue
+
+        if isinstance(result, tuple):
+            b, res = result
+            results.append(res)
+
+            if res.get("status") == "complete":
+                remaining_jobs = len(job_list) - (job_list.index(job) + 1)
+                jobs_skipped = remaining_jobs
+                break
+
+    return (busco_id, results, jobs_submitted, jobs_skipped)
 
 
 def runbusco(
@@ -372,47 +481,6 @@ def runbusco(
                 )
             )
 
-        # Helper function to process all jobs for a single BUSCO with early exit
-        def process_busco_jobs(busco_id, job_list, seq_records, cutoffs, species):
-            """
-            Process all jobs for a single BUSCO in priority order.
-            Returns early if a complete model is found.
-
-            Returns:
-                tuple: (busco_id, results_list, jobs_submitted, jobs_skipped)
-            """
-            results = []
-            jobs_submitted = 0
-            jobs_skipped = 0
-
-            for job in job_list:
-                # Run Augustus + HMMER validation
-                result = predict_and_validate(
-                    seq_records,
-                    job["contig"],
-                    job["prfl"],
-                    cutoffs,
-                    species,
-                    job["start"],
-                    job["end"],
-                    job["strand"],
-                    False,
-                    job["score"],
-                )
-                jobs_submitted += 1
-
-                if isinstance(result, tuple):
-                    b, res = result
-                    results.append(res)
-
-                    # Early exit: if we found a COMPLETE model, skip remaining jobs
-                    if res.get("status") == "complete":
-                        remaining_jobs = len(job_list) - (job_list.index(job) + 1)
-                        jobs_skipped = remaining_jobs
-                        break  # Exit early!
-
-            return (busco_id, results, jobs_submitted, jobs_skipped)
-
         # run busco analysis using threadpool with early exit optimization
         # Process multiple BUSCOs in parallel, each with its own early exit logic
         if len(complete) > 0:
@@ -477,6 +545,7 @@ def runbusco(
                     seq_records,
                     CutOffs,
                     species,
+                    logger,
                 )
                 futures.append(future)
 
