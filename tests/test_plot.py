@@ -14,7 +14,7 @@ def test_busco_plot_init():
     plotter = BuscoPlot(width=800, height=400)
     assert plotter.width == 800
     assert plotter.height == 400
-    assert plotter.plot_width == 800 - 120 - 40  # width - left - right margins
+    assert plotter.plot_width == 800 - 120 - 100  # width - left - right margins
     assert plotter.plot_height == 400 - 60 - 80  # height - top - bottom margins
 
 
