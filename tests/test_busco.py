@@ -4,6 +4,7 @@ Tests for the busco module.
 
 import os
 import subprocess
+import tempfile
 from unittest.mock import patch
 
 import pytest  # noqa: F401 - Needed for pytest fixtures
@@ -145,6 +146,69 @@ def test_predict_and_validate_saves_debug_artifacts_on_failure(tmp_path):
         assert f.read().strip() == "-4"
     with open(os.path.join(debug_dir, "stderr.txt")) as f:
         assert "illegal instruction" in f.read()
+
+
+def test_predict_and_validate_sigsegv_saves_artifacts(tmp_path):
+    """Any negative returncode (e.g. -11 SIGSEGV) is treated as a signal
+    death: artifacts are persisted and the exception is re-raised."""
+    prfl = str(tmp_path / "busco42.prfl")
+    open(prfl, "w").close()
+
+    cmd = ["augustus", "--fake", "arg"]
+    err = subprocess.CalledProcessError(-11, cmd, output=None, stderr="segfault\n")
+
+    with patch("buscolite.busco.proteinprofile", side_effect=err):
+        with pytest.raises(subprocess.CalledProcessError) as excinfo:
+            predict_and_validate(
+                _minimal_fadict(),
+                "contig1",
+                prfl,
+                cutoffs={"busco42": {"score": 100.0}},
+                species="human",
+                start=0,
+                end=20,
+                strand="+",
+                configpath="/nope",
+                blast_score=1.0,
+            )
+
+    debug_dir = getattr(excinfo.value, "buscolite_debug_dir", None)
+    assert debug_dir is not None and os.path.isdir(debug_dir)
+    with open(os.path.join(debug_dir, "returncode.txt")) as f:
+        assert f.read().strip() == "-11"
+
+
+def test_predict_and_validate_benign_nonzero_exit_is_nohit(tmp_path):
+    """rc>0 CalledProcessError (augustus' normal "No feasible path found in
+    HMM" exit) returns False silently — no debug dir, no re-raise."""
+    prfl = str(tmp_path / "busco42.prfl")
+    open(prfl, "w").close()
+
+    debug_root = os.path.join(tempfile.gettempdir(), "buscolite_debug")
+    before = set(os.listdir(debug_root)) if os.path.isdir(debug_root) else set()
+
+    cmd = ["augustus", "--fake", "arg"]
+    err = subprocess.CalledProcessError(
+        1, cmd, output=None, stderr="augustus: ERROR\n\tNo feasible path found in HMM\n"
+    )
+
+    with patch("buscolite.busco.proteinprofile", side_effect=err):
+        result = predict_and_validate(
+            _minimal_fadict(),
+            "contig1",
+            prfl,
+            cutoffs={"busco42": {"score": 100.0}},
+            species="human",
+            start=0,
+            end=20,
+            strand="+",
+            configpath="/nope",
+            blast_score=1.0,
+        )
+
+    assert result is False
+    after = set(os.listdir(debug_root)) if os.path.isdir(debug_root) else set()
+    assert after == before, "benign rc>0 must not leave debug dirs behind"
 
 
 def test_predict_and_validate_cleans_up_on_success(tmp_path):

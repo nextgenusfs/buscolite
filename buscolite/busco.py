@@ -198,9 +198,18 @@ def predict_and_validate(
                 configpath=configpath,
             )
         except subprocess.CalledProcessError as e:
-            debug_dir = _save_augustus_debug(t_fasta.name, e, busco_name)
-            e.buscolite_debug_dir = debug_dir
-            raise
+            # POSIX: signal-terminated children have negative returncodes (e.g.
+            # -4 SIGILL, -11 SIGSEGV). Those are real crashes — preserve debug
+            # artifacts and re-raise so the caller can log and skip.
+            # A positive returncode (e.g. rc=1 "No feasible path found in HMM")
+            # is augustus exiting normally with "no gene found in this region"
+            # — treat it as a silent no-hit to avoid spamming the log and
+            # $TMPDIR with one entry per missed region.
+            if e.returncode is not None and e.returncode < 0:
+                debug_dir = _save_augustus_debug(t_fasta.name, e, busco_name)
+                e.buscolite_debug_dir = debug_dir
+                raise
+            return False
     finally:
         try:
             os.unlink(t_fasta.name)
