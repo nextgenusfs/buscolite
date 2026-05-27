@@ -375,7 +375,7 @@ def runbusco(
         if check_augustus:
             if not augustus_functional():
                 logger.error(
-                    "Augustus PPX (--proteinprofile) is non-functional. Usually caused by compilation errors."
+                    "Augustus PPX (--proteinprofile) self-test failed; see stderr above for details. Common causes: augustus missing or broken, augustus compiled without --enable-proteinprofile, or a CPU/binary mismatch (e.g. linux/amd64 bioconda build under Rosetta 2)."
                 )
                 raise SystemExit(1)
         if verbosity >= 1:
