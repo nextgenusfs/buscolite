@@ -160,25 +160,9 @@ def _save_augustus_debug(fasta_path, err, busco_name):
     return debug_dir
 
 
-def is_match_complete(busco_name, hmm_len, qlen, cutoffs):
+def classify_match_status(busco_name, hmm_len, qlen, tlen, cutoffs):
     """
-    Determine if a match is complete based on HMM length and lineage cutoffs.
-
-    Parameters
-    ----------
-    busco_name : str
-        Name of the BUSCO model
-    hmm_len : int
-        Length of the aligned match on the HMM profile
-    qlen : int
-        Length of the HMM profile (number of match states)
-    cutoffs : dict
-        Dictionary of cutoffs
-
-    Returns
-    -------
-    bool
-        True if the match is complete, False otherwise
+    Classify a match as complete, very_large, or fragmented.
     """
     model_cutoffs = cutoffs.get(busco_name, {})
 
@@ -186,30 +170,47 @@ def is_match_complete(busco_name, hmm_len, qlen, cutoffs):
     if "median" in model_cutoffs and "sMAD" in model_cutoffs:
         median = model_cutoffs["median"]
         smad = model_cutoffs["sMAD"]
-        # Match length must be greater than the smallest of:
-        # 1. 90% of median length
-        # 2. median - (2 x sMAD) (capped at 25% of the median length)
-        # 3. 80% of HMM profile length (qlen)
-        t1 = 0.9 * median
-        t2 = median - min(2.0 * smad, 0.25 * median)
-        t3 = 0.8 * qlen
-        min_len = min(t1, t2, t3)
-        max_len = 1.5 * median
-        return min_len <= hmm_len <= max_len
+        margin = min(25.0, 2.0 * smad)
+        # Use target/sequence length (tlen) for ODB12.2 bounds check
+        size = tlen if tlen is not None else hmm_len
+        lower_bound = min(0.9 * median, median - margin, 0.8 * qlen)
+        upper_bound = 1.5 * median
+        if lower_bound <= size <= upper_bound:
+            return "complete"
+        elif size > upper_bound:
+            return "very_large"
+        else:
+            return "fragmented"
 
     # ODB10: has length and sigma keys
     elif "length" in model_cutoffs and "sigma" in model_cutoffs:
         length = model_cutoffs["length"]
         sigma = model_cutoffs["sigma"]
-        # Complete if zeta <= 2
-        # zeta = (length - hmm_len) / sigma
-        # So: hmm_len >= length - 2 * sigma
-        return hmm_len >= (length - 2.0 * sigma)
+        # Use hmm_len for ODB10 bounds check
+        size = hmm_len
+        zeta = (length - size) / sigma
+        if -2 <= zeta <= 2:
+            return "complete"
+        elif zeta < -2:
+            return "very_large"
+        else:
+            return "fragmented"
 
     # ODB12: no lengths_cutoff file, so only score cutoff is present
     else:
-        # Complete if hmm_len >= 80% of HMM profile length (qlen)
-        return hmm_len >= 0.8 * qlen
+        # Use hmm_len for ODB12 bounds check
+        size = hmm_len
+        if size >= 0.8 * qlen:
+            return "complete"
+        else:
+            return "fragmented"
+
+
+def is_match_complete(busco_name, hmm_len, qlen, cutoffs, tlen=None):
+    """
+    Determine if a match is complete.
+    """
+    return classify_match_status(busco_name, hmm_len, qlen, tlen, cutoffs) == "complete"
 
 
 def predict_and_validate(
@@ -300,7 +301,9 @@ def predict_and_validate(
                     hmm_len = hmm_result[0]["hmm_len"]
                     qlen = hmm_result[0]["qlen"]
                     if status == "complete":
-                        if not is_match_complete(busco_name, hmm_len, qlen, cutoffs):
+                        if not is_match_complete(
+                            busco_name, hmm_len, qlen, cutoffs, tlen=len(protein.rstrip("*"))
+                        ):
                             status = "fragmented"
                     final = {
                         "contig": v["contig"],
@@ -797,17 +800,75 @@ def runbusco(
                             b_results[modelName].append(x)
 
         # Apply BUSCO v6-style filtering
-        # Step 1: Remove matches scoring less than 85% of top bitscore for each BUSCO
-        if verbosity >= 2:
-            logger.info(
-                "Filtering {} initial matches using 85% bitscore threshold".format(
-                    sum(len(v) for v in b_results.values())
+        # Step 1: Classify matches into complete, very_large, fragmented
+        for busco_id, matches in b_results.items():
+            for x in matches:
+                x["tlen"] = falengths[x["hit"]]
+                x["status"] = classify_match_status(
+                    busco_id, x["hmm_len"], x["qlen"], x["tlen"], CutOffs
                 )
-            )
-        b_results = filter_low_scoring_matches(b_results, threshold=0.85)
 
-        # Step 2: Remove duplicate gene matches (same gene matching multiple BUSCOs)
-        b_results = remove_duplicate_gene_matches(b_results, score_key="bitscore")
+        # Split into tiers
+        is_complete = {}
+        is_very_large = {}
+        is_fragment = {}
+        for busco_id, matches in b_results.items():
+            for x in matches:
+                if x["status"] == "complete":
+                    is_complete.setdefault(busco_id, []).append(x)
+                elif x["status"] == "very_large":
+                    is_very_large.setdefault(busco_id, []).append(x)
+                else:
+                    is_fragment.setdefault(busco_id, []).append(x)
+
+        # Step 2: Tier-based cross-tier duplicate removal
+        used_genes = set()
+        for busco_id, matches in is_complete.items():
+            for x in matches:
+                used_genes.add(x["hit"])
+
+        for busco_id in list(is_very_large.keys()):
+            is_very_large[busco_id] = [
+                x for x in is_very_large[busco_id] if x["hit"] not in used_genes
+            ]
+            if not is_very_large[busco_id]:
+                del is_very_large[busco_id]
+
+        for busco_id, matches in is_very_large.items():
+            for x in matches:
+                used_genes.add(x["hit"])
+
+        for busco_id in list(is_fragment.keys()):
+            is_fragment[busco_id] = [x for x in is_fragment[busco_id] if x["hit"] not in used_genes]
+            if not is_fragment[busco_id]:
+                del is_fragment[busco_id]
+
+        # Step 3: Within-tier duplicate removal
+        is_complete = remove_duplicate_gene_matches(is_complete, score_key="bitscore")
+        is_very_large = remove_duplicate_gene_matches(is_very_large, score_key="bitscore")
+        is_fragment = remove_duplicate_gene_matches(is_fragment, score_key="bitscore")
+
+        # Step 4: Apply 85% bitscore filter to each tier
+        is_complete = filter_low_scoring_matches(is_complete, threshold=0.85)
+        is_very_large = filter_low_scoring_matches(is_very_large, threshold=0.85)
+        is_fragment = filter_low_scoring_matches(is_fragment, threshold=0.85)
+
+        # Consolidate results prioritizing complete/very_large over fragments
+        b_results = {}
+        all_buscos = set(is_complete.keys()) | set(is_very_large.keys()) | set(is_fragment.keys())
+        for busco_id in all_buscos:
+            if busco_id in is_complete or busco_id in is_very_large:
+                matches = is_complete.get(busco_id, []) + is_very_large.get(busco_id, [])
+                for x in matches:
+                    x["status"] = "complete"
+                b_results[busco_id] = matches
+            else:
+                fragments = is_fragment.get(busco_id, [])
+                if fragments:
+                    best_fragment = max(fragments, key=lambda x: x["bitscore"])
+                    best_fragment["status"] = "fragmented"
+                    b_results[busco_id] = [best_fragment]
+
         if verbosity >= 2:
             logger.info(
                 "After filtering: {} matches remain".format(sum(len(v) for v in b_results.values()))
@@ -826,11 +887,6 @@ def runbusco(
             "missing": len(missing),
         }
         for k, v in natsorted(b_results.items()):
-            # Classify complete vs fragmented first
-            for x in v:
-                is_comp = is_match_complete(k, x["hmm_len"], x["qlen"], CutOffs)
-                x["status"] = "complete" if is_comp else "fragmented"
-
             if len(v) > 1:  # duplicates
                 for i, x in enumerate(sorted(v, key=lambda y: y["bitscore"], reverse=True)):
                     x["status"] = "duplicated"

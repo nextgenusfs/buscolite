@@ -144,3 +144,58 @@ def test_remove_duplicate_gene_matches_nested_score():
     # The same genomic location should only appear once (in BUSCO1)
     assert len(filtered["BUSCO1"]) == 1
     assert "BUSCO2" not in filtered or len(filtered["BUSCO2"]) == 0
+
+
+def test_classify_match_status():
+    """Test match status classification logic for ODB12.2 and other schemes."""
+    from buscolite.busco import classify_match_status
+
+    # ODB12.2 cutoffs (has median and sMAD keys)
+    cutoffs_12_2 = {"BUSCO1": {"median": 100.0, "sMAD": 5.0, "score": 80.0}}
+    # ODB10 cutoffs (has length and sigma keys)
+    cutoffs_10 = {"BUSCO2": {"length": 100.0, "sigma": 5.0, "score": 80.0}}
+    # ODB12 cutoffs (only score cutoff)
+    cutoffs_12 = {"BUSCO3": {"score": 80.0}}
+
+    # Test ODB12.2
+    assert (
+        classify_match_status("BUSCO1", hmm_len=90, qlen=100, tlen=90, cutoffs=cutoffs_12_2)
+        == "complete"
+    )
+    assert (
+        classify_match_status("BUSCO1", hmm_len=90, qlen=100, tlen=160, cutoffs=cutoffs_12_2)
+        == "very_large"
+    )
+    assert (
+        classify_match_status("BUSCO1", hmm_len=90, qlen=100, tlen=70, cutoffs=cutoffs_12_2)
+        == "fragmented"
+    )
+
+    # Test ODB10
+    # zeta = (100 - size) / 5
+    # size = 95 => zeta = 1 (complete)
+    # size = 115 => zeta = -3 (very_large)
+    # size = 85 => zeta = 3 (fragmented)
+    assert (
+        classify_match_status("BUSCO2", hmm_len=95, qlen=100, tlen=95, cutoffs=cutoffs_10)
+        == "complete"
+    )
+    assert (
+        classify_match_status("BUSCO2", hmm_len=115, qlen=100, tlen=115, cutoffs=cutoffs_10)
+        == "very_large"
+    )
+    assert (
+        classify_match_status("BUSCO2", hmm_len=85, qlen=100, tlen=85, cutoffs=cutoffs_10)
+        == "fragmented"
+    )
+
+    # Test ODB12
+    # complete if hmm_len >= 0.8 * qlen
+    assert (
+        classify_match_status("BUSCO3", hmm_len=85, qlen=100, tlen=85, cutoffs=cutoffs_12)
+        == "complete"
+    )
+    assert (
+        classify_match_status("BUSCO3", hmm_len=75, qlen=100, tlen=75, cutoffs=cutoffs_12)
+        == "fragmented"
+    )
