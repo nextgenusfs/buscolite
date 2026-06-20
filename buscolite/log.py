@@ -10,6 +10,7 @@ def startLogging(logfile=False):
     )
     fileformat = logging.Formatter("%(asctime)s: %(message)s", datefmt="[%x %H:%M:%S]")
     logger = logging.getLogger(__name__)
+    logger.handlers.clear()
     logger.setLevel(logging.DEBUG)
     sth = logging.StreamHandler()
     sth.setLevel(logging.INFO)
