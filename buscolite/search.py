@@ -565,6 +565,25 @@ def merge_overlapping_hits(queryList, fluff=10000):
     return result
 
 
+def sum_hmm_len(hmm_coords):
+    """
+    Sum the lengths of non-overlapping HMM regions.
+    """
+    hmm_regions_sorted = sorted(hmm_coords, key=lambda x: x[0])
+    hmm_regions_used = []
+    for region in hmm_regions_sorted:
+        for used in hmm_regions_used:
+            if (
+                used[0] <= region[0] <= used[1]
+            ):  # if any new coord contained in previous region, expand if necessary
+                if region[1] > used[1]:
+                    used[1] = region[1]
+                break
+        else:
+            hmm_regions_used.append(list(region))
+    return sum([region[1] - region[0] + 1 for region in hmm_regions_used])
+
+
 def hmmer_search_single(hmmfile, seq):
     """
     Search a single protein sequence against an HMM profile using pyhmmer.
@@ -584,6 +603,8 @@ def hmmer_search_single(hmmfile, seq):
         - bitscore: Bit score of the hit
         - evalue: E-value of the hit
         - domains: List of domain hits with coordinates and scores
+        - hmm_len: Length of the aligned match on the HMM profile
+        - qlen: Length of the HMM profile
     """
     hmm = next(pyhmmer.plan7.HMMFile(hmmfile))
     prot = pyhmmer.easel.TextSequence(sequence=seq)
@@ -603,12 +624,16 @@ def hmmer_search_single(hmmfile, seq):
                         "score": h.score,
                     }
                 )
+            hmm_coords = [(d["hmm_from"], d["hmm_to"]) for d in domains]
+            hmm_len = sum_hmm_len(hmm_coords)
             results.append(
                 {
                     "name": cog,
                     "bitscore": hit.score,
                     "evalue": hit.evalue,
                     "domains": domains,
+                    "hmm_len": hmm_len,
+                    "qlen": hmm.M,
                 }
             )
     return results
@@ -634,6 +659,8 @@ def hmmer_search(hmmfile, sequences):
         - bitscore: Bit score of the hit
         - evalue: E-value of the hit
         - domains: List of domain hits with coordinates and scores
+        - hmm_len: Length of the aligned match on the HMM profile
+        - qlen: Length of the HMM profile
     """
     hmm = next(pyhmmer.plan7.HMMFile(hmmfile))
     results = []
@@ -651,6 +678,8 @@ def hmmer_search(hmmfile, sequences):
                         "score": h.score,
                     }
                 )
+            hmm_coords = [(d["hmm_from"], d["hmm_to"]) for d in domains]
+            hmm_len = sum_hmm_len(hmm_coords)
             results.append(
                 {
                     "name": cog,
@@ -658,6 +687,8 @@ def hmmer_search(hmmfile, sequences):
                     "bitscore": hit.score,
                     "evalue": hit.evalue,
                     "domains": domains,
+                    "hmm_len": hmm_len,
+                    "qlen": hmm.M,
                 }
             )
     return results

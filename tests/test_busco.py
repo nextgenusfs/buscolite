@@ -11,6 +11,7 @@ import pytest  # noqa: F401 - Needed for pytest fixtures
 
 from buscolite.busco import (
     check_lineage,
+    is_match_complete,
     load_config,
     load_cutoffs,
     predict_and_validate,
@@ -45,6 +46,50 @@ def test_load_cutoffs(mock_busco_lineage):
     assert cutoffs["busco2"]["score"] == 200.0
     assert cutoffs["busco2"]["sigma"] == 1.0  # Should be 1 because sigma was 0.0
     assert cutoffs["busco2"]["length"] == 400
+
+
+def test_load_cutoffs_odb12_2(temp_dir):
+    """Test loading cutoffs from ODB12.2 lineage containing median and sMAD."""
+    lineage_dir = os.path.join(temp_dir, "mock_lineage_odb12_2")
+    os.makedirs(lineage_dir, exist_ok=True)
+    with open(os.path.join(lineage_dir, "scores_cutoff"), "w") as f:
+        f.write("busco1\t100.0\n")
+    with open(os.path.join(lineage_dir, "lengths_cutoff"), "w") as f:
+        f.write("busco1\t500.0\t50.0\n")
+
+    cutoffs = load_cutoffs(lineage_dir)
+    assert cutoffs["busco1"]["score"] == 100.0
+    assert cutoffs["busco1"]["median"] == 500.0
+    assert cutoffs["busco1"]["sMAD"] == 50.0
+    assert "length" not in cutoffs["busco1"]
+
+
+def test_is_match_complete():
+    """Test is_match_complete function for ODB10, ODB12, and ODB12.2 cutoffs."""
+    # 1. ODB10: length=300, sigma=10.0 -> threshold is 300 - 2*10 = 280
+    cutoffs_odb10 = {"busco1": {"length": 300, "sigma": 10.0}}
+    assert is_match_complete("busco1", 290, 300, cutoffs_odb10) is True
+    assert is_match_complete("busco1", 280, 300, cutoffs_odb10) is True
+    assert is_match_complete("busco1", 270, 300, cutoffs_odb10) is False
+
+    # 2. ODB12: no length/median keys -> threshold is 80% of profile length (qlen)
+    cutoffs_odb12 = {"busco1": {"score": 100.0}}
+    assert is_match_complete("busco1", 85, 100, cutoffs_odb12) is True
+    assert is_match_complete("busco1", 80, 100, cutoffs_odb12) is True
+    assert is_match_complete("busco1", 75, 100, cutoffs_odb12) is False
+
+    # 3. ODB12.2: median=500.0, sMAD=50.0
+    # t1 = 0.9 * median = 450.0
+    # t2 = median - min(2 * sMAD, 0.25 * median) = 500 - min(100, 125) = 400.0
+    # t3 = 0.8 * profile_length (let profile_length = 500 -> 400.0)
+    # min_len = min(450.0, 400.0, 400.0) = 400.0
+    # max_len = 1.5 * median = 750.0
+    cutoffs_odb12_2 = {"busco1": {"median": 500.0, "sMAD": 50.0}}
+    assert is_match_complete("busco1", 450, 500, cutoffs_odb12_2) is True
+    assert is_match_complete("busco1", 400, 500, cutoffs_odb12_2) is True
+    assert is_match_complete("busco1", 399, 500, cutoffs_odb12_2) is False
+    assert is_match_complete("busco1", 750, 500, cutoffs_odb12_2) is True
+    assert is_match_complete("busco1", 751, 500, cutoffs_odb12_2) is False
 
 
 def test_check_lineage_valid(mock_busco_lineage):

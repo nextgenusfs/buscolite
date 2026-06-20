@@ -58,7 +58,7 @@ def load_cutoffs(lineage):
     -------
     dict
         Dictionary containing the score and length cutoffs for each BUSCO model
-        Format: {busco_id: {"score": float, "sigma": float, "length": int}}
+        Format: {busco_id: {"score": float, "sigma": float, "length": int, "median": float, "sMAD": float}}
     """
     cutoffs = {}
     with open(os.path.join(lineage, "scores_cutoff"), "r") as infile:
@@ -73,17 +73,29 @@ def load_cutoffs(lineage):
     if os.path.isfile(length_cutoffs):
         with open(length_cutoffs, "r") as infile:
             for line in infile:
-                busco, _, sigma, length = line.rstrip().split("\t")
-                if float(sigma) == 0.0:
-                    sigma = 1
-                if busco not in cutoffs:
-                    cutoffs[busco] = {
-                        "sigma": float(sigma),
-                        "length": int(float(length)),
-                    }
-                else:
-                    cutoffs[busco]["sigma"] = float(sigma)
-                    cutoffs[busco]["length"] = int(float(length))
+                parts = line.rstrip().split("\t")
+                if len(parts) == 4:
+                    busco, _, sigma, length = parts
+                    if float(sigma) == 0.0:
+                        sigma = 1
+                    if busco not in cutoffs:
+                        cutoffs[busco] = {
+                            "sigma": float(sigma),
+                            "length": int(float(length)),
+                        }
+                    else:
+                        cutoffs[busco]["sigma"] = float(sigma)
+                        cutoffs[busco]["length"] = int(float(length))
+                elif len(parts) == 3:
+                    busco, median, smad = parts
+                    if busco not in cutoffs:
+                        cutoffs[busco] = {
+                            "median": float(median),
+                            "sMAD": float(smad),
+                        }
+                    else:
+                        cutoffs[busco]["median"] = float(median)
+                        cutoffs[busco]["sMAD"] = float(smad)
     return cutoffs
 
 
@@ -146,6 +158,58 @@ def _save_augustus_debug(fasta_path, err, busco_name):
     with open(os.path.join(debug_dir, "stderr.txt"), "w") as f:
         f.write(stderr_text)
     return debug_dir
+
+
+def is_match_complete(busco_name, hmm_len, qlen, cutoffs):
+    """
+    Determine if a match is complete based on HMM length and lineage cutoffs.
+
+    Parameters
+    ----------
+    busco_name : str
+        Name of the BUSCO model
+    hmm_len : int
+        Length of the aligned match on the HMM profile
+    qlen : int
+        Length of the HMM profile (number of match states)
+    cutoffs : dict
+        Dictionary of cutoffs
+
+    Returns
+    -------
+    bool
+        True if the match is complete, False otherwise
+    """
+    model_cutoffs = cutoffs.get(busco_name, {})
+
+    # ODB12.2: has median and sMAD keys
+    if "median" in model_cutoffs and "sMAD" in model_cutoffs:
+        median = model_cutoffs["median"]
+        smad = model_cutoffs["sMAD"]
+        # Match length must be greater than the smallest of:
+        # 1. 90% of median length
+        # 2. median - (2 x sMAD) (capped at 25% of the median length)
+        # 3. 80% of HMM profile length (qlen)
+        t1 = 0.9 * median
+        t2 = median - min(2.0 * smad, 0.25 * median)
+        t3 = 0.8 * qlen
+        min_len = min(t1, t2, t3)
+        max_len = 1.5 * median
+        return min_len <= hmm_len <= max_len
+
+    # ODB10: has length and sigma keys
+    elif "length" in model_cutoffs and "sigma" in model_cutoffs:
+        length = model_cutoffs["length"]
+        sigma = model_cutoffs["sigma"]
+        # Complete if zeta <= 2
+        # zeta = (length - hmm_len) / sigma
+        # So: hmm_len >= length - 2 * sigma
+        return hmm_len >= (length - 2.0 * sigma)
+
+    # ODB12: no lengths_cutoff file, so only score cutoff is present
+    else:
+        # Complete if hmm_len >= 80% of HMM profile length (qlen)
+        return hmm_len >= 0.8 * qlen
 
 
 def predict_and_validate(
@@ -233,6 +297,11 @@ def predict_and_validate(
             hmm_result = hmmer_search_single(hmmfile, protein.rstrip("*"))
             if len(hmm_result) > 0:
                 if hmm_result[0]["bitscore"] > cutoffs[busco_name]["score"]:
+                    hmm_len = hmm_result[0]["hmm_len"]
+                    qlen = hmm_result[0]["qlen"]
+                    if status == "complete":
+                        if not is_match_complete(busco_name, hmm_len, qlen, cutoffs):
+                            status = "fragmented"
                     final = {
                         "contig": v["contig"],
                         "strand": v["strand"],
@@ -757,6 +826,11 @@ def runbusco(
             "missing": len(missing),
         }
         for k, v in natsorted(b_results.items()):
+            # Classify complete vs fragmented first
+            for x in v:
+                is_comp = is_match_complete(k, x["hmm_len"], x["qlen"], CutOffs)
+                x["status"] = "complete" if is_comp else "fragmented"
+
             if len(v) > 1:  # duplicates
                 for i, x in enumerate(sorted(v, key=lambda y: y["bitscore"], reverse=True)):
                     x["status"] = "duplicated"
@@ -770,11 +844,9 @@ def runbusco(
             else:
                 x = v[0]
                 x["length"] = falengths[x["hit"]]
-                if "status" in x and x["status"] == "fragmented":
+                if x["status"] == "fragmented":
                     stats["fragmented"] += 1
-                    x["status"] = "fragmented"
                 else:
-                    x["status"] = "complete"
                     stats["single-copy"] += 1
                 b_final[k] = x
 
